@@ -1,0 +1,2388 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Digital QSL Card Studio & ADIF Logbook</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Inter for Studio UI -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    /* Genuine DejaVu Sans Mono Regular (400) & Bold (700) used by DigiQSL */
+    @font-face {
+      font-family: 'DejaVu Sans Mono';
+      src: url('https://cdn.jsdelivr.net/npm/dejavu-fonts-ttf@2.37.3/ttf/DejaVuSansMono.ttf') format('truetype');
+      font-weight: 400;
+      font-style: normal;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: 'DejaVu Sans Mono';
+      src: url('https://cdn.jsdelivr.net/npm/dejavu-fonts-ttf@2.37.3/ttf/DejaVuSansMono-Bold.ttf') format('truetype');
+      font-weight: 700;
+      font-style: normal;
+      font-display: swap;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #0b0f19;
+      color: #f1f5f9;
+    }
+    .font-qsl {
+      font-family: 'DejaVu Sans Mono', monospace;
+    }
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0f172a;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #475569;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col selection:bg-amber-500 selection:text-slate-950">
+
+  <!-- Hidden font preloader so Canvas immediately gets true DejaVu Sans Mono 400 & 700 glyphs -->
+  <div aria-hidden="true" class="fixed -top-96 left-0 opacity-0 pointer-events-none select-none font-qsl">
+    <span style="font-weight: 400;">KR4ODA EA5HPF 2026-10-10 28.074 GXP Yagi antennas</span>
+    <span style="font-weight: 700;">CONFIRMING QSO WITH TNX QSO, VY 73 DE PSE QSL</span>
+  </div>
+
+  <!-- Top Navigation Header -->
+  <header class="border-b border-slate-800 bg-slate-900/90 backdrop-blur sticky top-0 z-30">
+    <div class="max-w-[1600px] mx-auto px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 font-qsl font-bold text-lg">
+          73
+        </div>
+        <div>
+          <div class="flex items-center gap-2 flex-wrap">
+            <h1 class="font-bold text-base sm:text-lg tracking-tight text-white">Digital QSL Card Studio</h1>
+            <span class="text-[11px] font-qsl px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">DejaVu Sans Mono • 1000×643 Native</span>
+            <span class="text-[11px] font-qsl px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">QRZ Preload Ready</span>
+          </div>
+          <p class="text-xs text-slate-400">Multi-Station Manager • QRZ.com Chrome Extension Receiver • Pixel-Exact DigiQSL Format</p>
+        </div>
+      </div>
+
+      <!-- Quick Action Bar -->
+      <div class="flex flex-wrap items-center gap-2">
+        <button id="simulateQrzBtn" type="button" class="px-3 py-1.5 rounded-lg bg-blue-500/15 hover:bg-blue-500/25 border border-blue-500/40 text-xs font-semibold text-blue-300 transition flex items-center gap-1.5" title="Test how clicking a QRZ.com link auto-reveals email and merges Logbook + Profile data">
+          <svg class="w-3.5 h-3.5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+          <span>Simulate Merged QRZ Preload</span>
+        </button>
+        <button id="openExtensionModalBtn" type="button" class="px-3.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold transition flex items-center gap-1.5 shadow-lg shadow-amber-500/10">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 4a2 2 0 114 0v1a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-1a2 2 0 100 4h1a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-1a2 2 0 10-4 0v1a1 1 0 01-1 1H7a1 1 0 01-1-1v-3a1 1 0 00-1-1H4a2 2 0 110-4h1a1 1 0 001-1V7a1 1 0 011-1h3a1 1 0 001-1V4z"/></svg>
+          <span>Get QRZ Chrome Extension (3-File Merger)</span>
+        </button>
+        <button id="resetExampleBtn" type="button" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-medium text-slate-300 transition">
+          Reset Reference Card
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Toast Notification Banner -->
+  <div id="toastBanner" class="fixed bottom-5 right-5 z-50 hidden transform transition-all duration-200 bg-slate-800 border border-amber-500/40 text-slate-100 px-4 py-2.5 rounded-xl shadow-2xl flex items-center gap-2.5 text-sm">
+    <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+    <span id="toastText">Saved!</span>
+  </div>
+
+  <!-- QRZ CHROME EXTENSION GENERATOR MODAL (3-FILE AUTO-REVEAL + LOGBOOK/PROFILE MERGER) -->
+  <div id="extensionModal" class="fixed inset-0 z-50 hidden bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+    <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-4xl w-full p-6 shadow-2xl space-y-5 my-8 max-h-[92vh] overflow-y-auto">
+      <div class="flex items-start justify-between gap-4 border-b border-slate-800 pb-4">
+        <div>
+          <div class="flex items-center gap-2 flex-wrap">
+            <span class="px-2 py-0.5 rounded bg-amber-500/20 text-amber-400 font-qsl text-xs font-bold">Manifest V3 • v2.0</span>
+            <span class="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-qsl text-xs font-bold">Auto-Email Reveal + Profile/Logbook Merger</span>
+            <h2 class="text-lg font-bold text-white">QRZ.com → Digital QSL Studio Chrome Extension</h2>
+          </div>
+          <p class="text-xs text-slate-400 mt-1">
+            Automatically reveals hidden emails on <code class="text-amber-300 font-qsl">qrz.com/db/*</code>, scrapes embedded "Worked Before" logs, and performs a background profile fetch when clicking <code class="text-amber-300 font-qsl">QSL ↗</code> inside <code class="text-amber-300 font-qsl">logbook.qrz.com</code> so 100% of QSO + Contact details merge in one click.
+          </p>
+        </div>
+        <button id="closeExtensionModalBtn" type="button" class="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <!-- Extension Target URL & Default Station Configuration -->
+      <div class="grid grid-cols-1 sm:grid-cols-12 gap-3 bg-slate-950/80 p-4 rounded-xl border border-slate-800 items-end">
+        <div class="sm:col-span-6">
+          <label class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Your QSL Studio URL (Where QRZ Opens)</label>
+          <input id="extStudioUrlInput" type="text" class="w-full bg-slate-900 border border-slate-700 focus:border-amber-500 focus:outline-none rounded-lg px-3 py-1.5 text-xs font-qsl text-white">
+        </div>
+        <div class="sm:col-span-3">
+          <label class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Default Station Callsign</label>
+          <input id="extDefaultStationInput" type="text" value="KR4ODA" class="w-full bg-slate-900 border border-slate-700 focus:border-amber-500 focus:outline-none rounded-lg px-3 py-1.5 text-xs font-qsl uppercase text-white">
+        </div>
+        <div class="sm:col-span-3">
+          <button id="downloadAllExtFilesBtn" type="button" class="w-full py-2 px-3 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs transition flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-500/10">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+            <span>Download All 3 Files</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- 3-Step Installation Guide -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+        <div class="bg-blue-950/30 border border-blue-500/30 rounded-xl p-3.5 space-y-1">
+          <div class="font-bold text-blue-300 uppercase tracking-wider text-[11px]">Feature A • Auto-Reveal Email</div>
+          <p class="text-slate-300 text-[11px]">On <code class="font-qsl text-amber-300">qrz.com/db/*</code>, automatically triggers QRZ's hidden email reveal (<code class="font-qsl">#em_a</code>) and waits up to 600ms via MutationObserver before opening the card.</p>
+        </div>
+        <div class="bg-blue-950/30 border border-blue-500/30 rounded-xl p-3.5 space-y-1">
+          <div class="font-bold text-blue-300 uppercase tracking-wider text-[11px]">Feature B • "Worked Before" Log</div>
+          <p class="text-slate-300 text-[11px]">Scrapes QRZ's embedded <code class="font-qsl">#lbook</code> table on biography pages to capture your latest QSO Date, UTC, Band/MHz, Mode, and Station Callsign automatically.</p>
+        </div>
+        <div class="bg-blue-950/30 border border-blue-500/30 rounded-xl p-3.5 space-y-1">
+          <div class="font-bold text-blue-300 uppercase tracking-wider text-[11px]">Feature C • Logbook + Profile Fetch</div>
+          <p class="text-slate-300 text-[11px]">Clicking <code class="font-qsl text-amber-300">QSL ↗</code> in <code class="font-qsl text-amber-300">logbook.qrz.com</code> asks <code class="font-qsl">background.js</code> to fetch the DX profile in the background, merging QSO + Email/Grid/QTH.</p>
+        </div>
+      </div>
+
+      <!-- File 1: manifest.json -->
+      <div class="space-y-2">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-bold font-qsl text-amber-400">1. manifest.json (Permissions + Background Service Worker)</span>
+          <div class="flex items-center gap-2">
+            <button id="copyManifestBtn" type="button" class="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-xs text-slate-200 border border-slate-700 transition">Copy manifest.json</button>
+            <button id="downloadManifestBtn" type="button" class="px-3 py-1 rounded bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs transition">Download manifest.json</button>
+          </div>
+        </div>
+        <pre id="manifestCodeBlock" class="bg-slate-950 border border-slate-800 rounded-xl p-3 text-[11px] font-qsl text-slate-300 overflow-x-auto max-h-36"></pre>
+      </div>
+
+      <!-- File 2: background.js -->
+      <div class="space-y-2">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-bold font-qsl text-amber-400">2. background.js (Cross-Origin QRZ Profile & Email Fetcher for Logbook Rows)</span>
+          <div class="flex items-center gap-2">
+            <button id="copyBackgroundJsBtn" type="button" class="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-xs text-slate-200 border border-slate-700 transition">Copy background.js</button>
+            <button id="downloadBackgroundJsBtn" type="button" class="px-3 py-1 rounded bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs transition">Download background.js</button>
+          </div>
+        </div>
+        <pre id="backgroundJsCodeBlock" class="bg-slate-950 border border-slate-800 rounded-xl p-3 text-[11px] font-qsl text-slate-300 overflow-x-auto max-h-44"></pre>
+      </div>
+
+      <!-- File 3: content.js -->
+      <div class="space-y-2">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-bold font-qsl text-amber-400">3. content.js (Auto-Reveal Email + Worked-Before Scraper + Logbook Merger)</span>
+          <div class="flex items-center gap-2">
+            <button id="copyContentJsBtn" type="button" class="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-xs text-slate-200 border border-slate-700 transition">Copy content.js</button>
+            <button id="downloadContentJsBtn" type="button" class="px-3 py-1 rounded bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs transition">Download content.js</button>
+          </div>
+        </div>
+        <pre id="contentJsCodeBlock" class="bg-slate-950 border border-slate-800 rounded-xl p-3 text-[11px] font-qsl text-slate-300 overflow-x-auto max-h-52"></pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Split Studio Layout -->
+  <main class="flex-1 max-w-[1600px] w-full mx-auto px-4 sm:px-6 py-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+
+    <!-- LEFT COLUMN: Multi-Station Manager, QSO Grid, Artwork & ADIF Logbook (5 Columns on Desktop) -->
+    <div class="lg:col-span-5 space-y-5">
+
+      <!-- SECTION 1: MULTI-STATION PROFILES MANAGER (UNLIMITED SAVED STATIONS) -->
+      <section class="bg-slate-900 border border-blue-500/30 rounded-2xl p-5 shadow-lg space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-3">
+          <div class="flex items-center gap-2">
+            <span class="w-5 h-5 rounded-full bg-blue-500/20 text-blue-400 text-xs font-bold flex items-center justify-center">1</span>
+            <h2 class="text-sm font-bold uppercase tracking-wider text-slate-200">Saved Stations Manager</h2>
+            <span id="stationCountBadge" class="text-[11px] font-qsl px-2 py-0.5 rounded bg-slate-800 text-amber-400 border border-slate-700">2 Saved</span>
+          </div>
+
+          <div class="flex items-center gap-1.5">
+            <button id="addNewStationBtn" type="button" class="px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs transition flex items-center gap-1">
+              <span>+ Add Station</span>
+            </button>
+            <button id="duplicateStationBtn" type="button" class="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs text-slate-300 transition" title="Duplicate active station">
+              Duplicate
+            </button>
+            <button id="deleteStationBtn" type="button" class="px-2 py-1 rounded-lg bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-xs text-red-300 transition" title="Delete active station">
+              Delete
+            </button>
+          </div>
+        </div>
+
+        <!-- Clickable Station Selector Cards + Dropdown -->
+        <div class="space-y-2">
+          <div class="flex items-center justify-between text-xs text-slate-400">
+            <span>Select Active Station (auto-loads Callsign, Rig, Power, Antenna, QTH & State):</span>
+          </div>
+          <div id="stationPillsContainer" class="grid grid-cols-1 sm:grid-cols-2 gap-2"></div>
+          <select id="stationSelectDropdown" class="w-full bg-slate-950 border border-slate-700 focus:border-amber-500 focus:outline-none rounded-lg px-3 py-2 text-xs font-qsl text-slate-200"></select>
+        </div>
+
+        <!-- Active Station Fields (Auto-Saved to localStorage on every keystroke) -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-slate-800/80">
+          <div class="sm:col-span-2">
+            <label class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Station Profile Label (For Your List)</label>
+            <input id="stationProfileName" type="text" value="KR4ODA — New York Base" placeholder="e.g., Home Base, POTA Portable, Contest Station" class="w-full bg-slate-950 border border-slate-700 focus:border-amber-500 focus:outline-none rounded-lg px-3 py-1.5 text-xs text-slate-200">
+          </div>
+
+          <div>
+            <label class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Station Callsign (Top-Left Badge)</label>
+            <input id="myCall" type="text" value="KR4ODA" placeholder="KR4ODA" class="w-full bg-slate-950 border border-slate-700 focus:border-amber-500 focus:outline-none rounded-lg px-3 py-2 text-sm font-qsl uppercase text-white">
+          </div>
+          <div>
+            <label class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">TNX QSO, VY 73 DE (Operator)</label>
+            <input id="myName" type="text" value="Pranav Sharma" placeholder="Pranav Sharma" class="w-full bg-slate-950 border border-slate-700 focus:border-amber-500 focus:outline-none rounded-lg px-3 py-2 text-sm font-qsl text-white">
+          </div>
+
+          <div>
+            <label class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">RIG (Transceiver)</label>
+            <input id="myRig" type="text" value="IC-7300MK2" placeholder="IC-7300MK2" class="w-full bg-slate-950 border border-slate-700 focus:border-amber-500 focus:outline-none rounded-lg px-3 py-2 text-sm font-qsl text-white">
+          </div>
+          <div>
+            <label class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">PWR (Transmit Power)</label>
+            <input id="myPwr" type="text" value="100 W" placeholder="100 W" class="w-full bg-slate-950 border border-slate-700 focus:border-amber-500 focus:outline-none rounded-lg px-3 py-2 text-sm font-qsl text-white">
+            <div class="flex flex-wrap gap-1 mt-1.5">
+              <button type="button" data-pwr="5 W" class="pwr-pill text-[10px] font-qsl px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700">5W</button>
+              <button type="button" data-pwr="20 W" class="pwr-pill text-[10px] font-qsl px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700">20W</button>
+              <button type="button" data-pwr="50 W" class="pwr-pill text-[10px] font-qsl px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700">50W</button>
+              <button type="button" data-pwr="100 W" class="pwr-pill text-[10px] font-qsl px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700">100W</button>
+              <button type="button" data-pwr="500 W" class="pwr-pill text-[10px] font-qsl px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700">500W</button>
+              <button type="button" data-pwr="1500 W" class="pwr-pill text-[10px] font-qsl px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700">1500W</button>
+            </div>
+          </div>
+
+          <div class="sm:col-span-2">
+            <label class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">ANT (Antennas)</label>
+            <input id="myAnt" type="text" value="GXP Yagi antennas" placeholder="GXP Yagi antennas" class="w-full bg-slate-950 border border-slate-700 focus:border-amber-500 focus:outline-none rounded-lg px-3 py-2 text-sm font-qsl text-white">
+          </div>
+
+          <div>
+            <label class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">QTH (City / Location)</label>
+            <input id="myQth" type="text" value="New York" placeholder="New York" class="w-full bg-slate-950 border border-slate-700 focus:border-amber-500 focus:outline-none rounded-lg px-3 py-2 text-sm font-qsl text-white">
+          </div>
+          <div>
+            <div class="flex items-center justify-between mb-1">
+              <label class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">State / Province</label>
+              <label class="flex items-center gap-1 text-[10px] text-amber-400 cursor-pointer select-none" title="When checked, appends ', STATE' to QTH on the rendered card">
+                <input id="showStateOnCardToggle" type="checkbox" class="rounded bg-slate-950 border-slate-700 text-amber-500 focus:ring-0">
+                <span>Show on card</span>
+              </label>
+            </div>
+            <input id="myState" type="text" value="NY" placeholder="NY / GA / CA" class="w-full bg-slate-950 border border-slate-700 focus:border-amber-500 focus:outline-none rounded-lg px-3 py-2 text-sm font-qsl uppercase text-white">
+          </div>
+
+          <div>
+            <label class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">QSL Stamp (Bottom-Right)</label>
+            <select id="qslStamp" class="w-full bg-slate-950 border border-slate-700 focus:border-amber-500 focus:outline-none rounded-lg px-3 py-2 text-sm font-qsl text-white">
+              <option value="PSE QSL" selected>PSE QSL</option>
+              <option value="TNX QSL">TNX QSL</option>
+              <option value="VY 73">VY 73</option>
+              <option value="NO QSL">NO QSL</option>
+              <option value="">(Blank)</option>
+            </select>
+          </div>
+
+          <div class="flex items-end justify-between gap-2 pb-1">
+            <label class="flex items-center gap-1.5 text-xs text-slate-400 cursor-pointer select-none">
+              <input id="showWatermarkToggle" type="checkbox" class="rounded bg-slate-950 border-slate-700 text-amber-500 focus:ring-0">
+              <span>Show DigiQSL.com text</span>
+            </label>
+            <div class="flex items-center gap-1.5">
+              <button id="exportStationsJsonBtn" type="button" class="text-[11px] px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700" title="Export all saved stations to JSON">Export JSON</button>
+              <label class="text-[11px] px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 cursor-pointer" title="Import saved stations from JSON">
+                <span>Import</span>
+                <input id="importStationsJsonInput" type="file" accept=".json" class="hidden">
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <!-- Hidden color/opacity controls preserved at exact DigiQSL reference defaults -->
+        <input id="stationBoxOpacity" type="hidden" value="100">
+        <input id="qsoTableOpacity" type="hidden" value="90">
+        <input id="colorRed" type="hidden" value="#9c2d23">
+        <input id="colorBlue" type="hidden" value="#123c69">
+      </section>
+
+      <!-- SECTION 2: QSO Details (Bottom-Left Table on Card) -->
+      <section class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-lg space-y-4">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+          <div class="flex items-center gap-2">
+            <span class="w-5 h-5 rounded-full bg-red-500/20 text-red-400 text-xs font-bold flex items-center justify-center">2</span>
+            <h2 class="text-sm font-bold uppercase tracking-wider text-slate-200">QSO Confirmation Grid (Bottom-Left)</h2>
+          </div>
+          <div class="flex items-center gap-2">
+            <button id="toggleQrzBannerBtn" type="button" class="text-xs px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-blue-300 border border-slate-700 font-medium transition">
+              Merged QRZ Dispatch Panel
+            </button>
+            <button id="setNowUtcBtn" type="button" class="text-xs px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-amber-400 border border-slate-700 font-medium transition">
+              Set UTC Now
+            </button>
+          </div>
+        </div>
+
+        <!-- Primary 6 QSO Columns -->
+        <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          <div class="col-span-2 sm:col-span-1">
+            <label class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Confirming QSO With</label>
+            <input id="dxCall" type="text" value="EA5HPF" placeholder="EA5HPF" class="w-full bg-slate-950 border border-slate-700 focus:border-amber-500 focus:outline-none rounded-lg px-3 py-2 text-sm font-qsl uppercase text-white">
+          </div>
+          <div>
+            <label class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Date (YYYY-MM-DD)</label>
+            <input id="qsoDate" type="text" value="2026-10-10" placeholder="YYYY-MM-DD" class="w-full bg-slate-950 border border-slate-700 focus:border-amber-500 focus:outline-none rounded-lg px-3 py-2 text-sm font-qsl text-white">
+          </div>
+          <div>
+            <label class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">UTC Time</label>
+            <input id="qsoUtc" type="text" value="14:54" placeholder="HH:MM" class="w-full bg-slate-950 border border-slate-700 focus:border-amber-500 focus:outline-none rounded-lg px-3 py-2 text-sm font-qsl text-white">
+          </div>
+          <div>
+            <label class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">MHz (Frequency)</label>
+            <input id="qsoMhz" type="text" value="28.074" placeholder="28.074" class="w-full bg-slate-950 border border-slate-700 focus:border-amber-500 focus:outline-none rounded-lg px-3 py-2 text-sm font-qsl text-white">
+          </div>
+          <div>
+            <label class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Mode</label>
+            <input id="qsoMode" type="text" value="FT8" placeholder="FT8 / SSB / CW" class="w-full bg-slate-950 border border-slate-700 focus:border-amber-500 focus:outline-none rounded-lg px-3 py-2 text-sm font-qsl uppercase text-white">
+          </div>
+          <div>
+            <label class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">RST Report</label>
+            <input id="qsoRst" type="text" value="59" placeholder="59 / 599 / -10" class="w-full bg-slate-950 border border-slate-700 focus:border-amber-500 focus:outline-none rounded-lg px-3 py-2 text-sm font-qsl text-white">
+          </div>
+        </div>
+
+        <!-- Quick Band / Mode / RST Pills -->
+        <div class="pt-1 space-y-2">
+          <div class="flex flex-wrap items-center gap-1.5">
+            <span class="text-[11px] text-slate-400 mr-1">Quick Freq:</span>
+            <button type="button" data-mhz="28.074" data-mode="FT8" class="freq-pill text-[11px] font-qsl px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700">10m FT8 (28.074)</button>
+            <button type="button" data-mhz="21.074" data-mode="FT8" class="freq-pill text-[11px] font-qsl px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700">15m FT8 (21.074)</button>
+            <button type="button" data-mhz="14.074" data-mode="FT8" class="freq-pill text-[11px] font-qsl px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700">20m FT8 (14.074)</button>
+            <button type="button" data-mhz="7.074" data-mode="FT8" class="freq-pill text-[11px] font-qsl px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700">40m FT8 (7.074)</button>
+            <button type="button" data-mhz="14.225" data-mode="SSB" class="freq-pill text-[11px] font-qsl px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700">20m SSB</button>
+          </div>
+          <div class="flex flex-wrap items-center gap-1.5">
+            <span class="text-[11px] text-slate-400 mr-1">Quick RST:</span>
+            <button type="button" data-rst="59" class="rst-pill text-[11px] font-qsl px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700">59</button>
+            <button type="button" data-rst="599" class="rst-pill text-[11px] font-qsl px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700">599</button>
+            <button type="button" data-rst="-08" class="rst-pill text-[11px] font-qsl px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700">-08</button>
+            <button type="button" data-rst="-12" class="rst-pill text-[11px] font-qsl px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700">-12</button>
+            <button type="button" data-rst="+02" class="rst-pill text-[11px] font-qsl px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700">+02</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- SECTION 3: Card Artwork / Overwrite Existing Card Mode -->
+      <section class="bg-slate-900 border border-amber-500/30 rounded-2xl p-5 shadow-lg space-y-4">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+          <div class="flex items-center gap-2">
+            <span class="w-5 h-5 rounded-full bg-amber-500/20 text-amber-400 text-xs font-bold flex items-center justify-center">3</span>
+            <h2 class="text-sm font-bold uppercase tracking-wider text-slate-200">Card Artwork / Existing Card Overwrite</h2>
+          </div>
+          <span class="text-[11px] font-qsl text-amber-400">1:1 Pixel Match</span>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          <button type="button" data-bgmode="builtin" class="bgmode-btn px-3 py-2 rounded-lg border border-amber-500 bg-amber-500/10 text-amber-300 text-xs font-semibold text-center transition">
+            Built-in Sunset & Yagi
+          </button>
+          <button type="button" data-bgmode="overwrite" class="bgmode-btn px-3 py-2 rounded-lg border border-slate-700 bg-slate-800/70 hover:bg-slate-800 text-slate-300 text-xs font-semibold text-center transition">
+            Overwrite Existing Card
+          </button>
+          <button type="button" data-bgmode="photo" class="bgmode-btn px-3 py-2 rounded-lg border border-slate-700 bg-slate-800/70 hover:bg-slate-800 text-slate-300 text-xs font-semibold text-center transition">
+            Custom Photo (Framed)
+          </button>
+        </div>
+
+        <!-- Hidden File Upload Input & Clear Button -->
+        <div class="space-y-2 pt-1">
+          <label id="uploadCardDropZone" class="border-2 border-dashed border-slate-700 hover:border-amber-500/60 rounded-xl p-4 flex flex-col items-center justify-center gap-1.5 cursor-pointer bg-slate-950/60 transition text-center">
+            <svg class="w-6 h-6 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+            <span id="uploadLabelText" class="text-xs font-medium text-slate-300">Upload Existing DigiQSL Card or Custom Photo...</span>
+            <span class="text-[10px] text-slate-500">Supports JPG, PNG, WEBP</span>
+            <input id="bgUploadInput" type="file" accept="image/*" class="hidden">
+          </label>
+          <div class="flex justify-end">
+            <button id="clearBgBtn" type="hidden" class="hidden text-xs px-3 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition">
+              Remove Background Photo
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- SECTION 4: ADIF LOGBOOK BATCH EXPORT & BROWSER -->
+      <section class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-lg space-y-4">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+          <div class="flex items-center gap-2">
+            <span class="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 text-xs font-bold flex items-center justify-center">4</span>
+            <h2 class="text-sm font-bold uppercase tracking-wider text-slate-200">ADIF Logbook Batch Export</h2>
+          </div>
+          <span class="text-[11px] font-qsl text-emerald-400">Batch Cards</span>
+        </div>
+
+        <div class="space-y-3">
+          <div class="flex flex-wrap items-center gap-2">
+            <label class="flex-1 min-w-[180px] px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 hover:border-amber-500 cursor-pointer text-xs text-slate-300 flex items-center justify-between gap-2 transition">
+              <span class="truncate">Import .ADI / .ADIF File</span>
+              <input id="adifFileInput" type="file" accept=".adi,.adif" class="hidden">
+            </label>
+            <button id="loadDemoAdifBtn" type="button" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-semibold text-slate-200 transition">
+              Load Demo Log
+            </button>
+            <button id="batchExportAllBtn" type="button" class="px-3 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs transition">
+              Export All (ZIP/JPG)
+            </button>
+          </div>
+
+          <div id="adifTableContainer" class="hidden space-y-2 bg-slate-950 p-3 rounded-xl border border-slate-800 max-h-48 overflow-y-auto">
+            <div class="flex items-center justify-between text-[11px] text-slate-400 pb-1 border-b border-slate-800">
+              <span id="adifCountLabel">0 QSOs loaded</span>
+              <span>Click row to load onto card</span>
+            </div>
+            <table class="w-full text-left text-xs font-qsl">
+              <tbody id="adifTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+    </div>
+
+    <!-- RIGHT COLUMN: Sticky High-Resolution Live QSL Preview & Merged QRZ Dispatch Panel (7 Columns on Desktop) -->
+    <div class="lg:col-span-7 lg:sticky lg:top-20 space-y-4">
+
+      <!-- MERGED QRZ CONTACT & 1-CLICK QSL DISPATCH BANNER (Above Live Preview Canvas) -->
+      <section id="qrzPreloadBanner" class="bg-gradient-to-r from-blue-950/80 via-slate-900 to-slate-900 border border-blue-500/40 rounded-2xl p-4 sm:p-5 shadow-2xl space-y-3.5">
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800/90 pb-3">
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 font-qsl text-[11px] font-bold">
+              <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span id="qrzSourceBadgeText">Merged: QRZ Logbook + Profile Fetch</span>
+            </span>
+            <span id="qrzMatchedStationBadge" class="px-2 py-0.5 rounded bg-amber-500/15 border border-amber-500/30 text-amber-300 font-qsl text-[11px]">
+              Station Matched: KR4ODA
+            </span>
+          </div>
+          <div class="flex items-center gap-2">
+            <button id="cycleMergedSampleBtn" type="button" class="text-[11px] font-qsl px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-blue-300 border border-slate-700 transition">
+              Next Sample QSO ↻
+            </button>
+            <button id="closeQrzBannerBtn" type="button" class="text-xs text-slate-400 hover:text-white px-1.5">Hide</button>
+          </div>
+        </div>
+
+        <!-- 6-Field Merged Contact Metadata Grid -->
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 text-xs">
+          <div class="bg-slate-950/90 border border-slate-800 rounded-lg p-2">
+            <span class="block text-[10px] text-slate-400 uppercase font-semibold">DX Operator</span>
+            <input id="qrzDxName" type="text" value="Francisco" placeholder="Operator Name" class="w-full bg-transparent font-qsl text-white focus:outline-none text-xs mt-0.5">
+          </div>
+          <div class="bg-slate-950/90 border border-slate-800 rounded-lg p-2 sm:col-span-2">
+            <span class="block text-[10px] text-emerald-400 uppercase font-semibold">Auto-Revealed Email</span>
+            <input id="qrzDxEmail" type="text" value="ea5hpf@qsl.net" placeholder="ham@example.com" class="w-full bg-transparent font-qsl text-amber-300 focus:outline-none text-xs mt-0.5">
+          </div>
+          <div class="bg-slate-950/90 border border-slate-800 rounded-lg p-2">
+            <span class="block text-[10px] text-slate-400 uppercase font-semibold">DX QTH / City</span>
+            <input id="qrzDxQth" type="text" value="Valencia" placeholder="City / QTH" class="w-full bg-transparent font-qsl text-white focus:outline-none text-xs mt-0.5">
+          </div>
+          <div class="bg-slate-950/90 border border-slate-800 rounded-lg p-2">
+            <span class="block text-[10px] text-slate-400 uppercase font-semibold">State / Prov</span>
+            <input id="qrzDxState" type="text" value="VC" placeholder="State" class="w-full bg-transparent font-qsl text-white focus:outline-none text-xs mt-0.5">
+          </div>
+          <div class="bg-slate-950/90 border border-slate-800 rounded-lg p-2">
+            <span class="block text-[10px] text-slate-400 uppercase font-semibold">Grid Square</span>
+            <input id="qrzDxGrid" type="text" value="IM99tl" placeholder="Grid" class="w-full bg-transparent font-qsl text-cyan-300 focus:outline-none text-xs mt-0.5">
+          </div>
+        </div>
+
+        <!-- QSL Info Note & 1-Click Dispatch Actions -->
+        <div class="flex flex-wrap items-center justify-between gap-3 pt-1">
+          <div class="flex items-center gap-2 flex-1 min-w-[220px] bg-slate-950/70 border border-slate-800/90 rounded-lg px-2.5 py-1.5">
+            <span class="text-[10px] font-semibold uppercase tracking-wider text-slate-400 shrink-0">QRZ QSL Info:</span>
+            <input id="qrzDxQslInfo" type="text" value="LoTW • eQSL • Direct & Email QSL OK" placeholder="LoTW / Direct / Email QSL OK" class="w-full bg-transparent font-qsl text-xs text-slate-200 focus:outline-none">
+          </div>
+
+          <div class="flex flex-wrap items-center gap-2">
+            <button id="copyEmailDetailsBtn" type="button" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs text-slate-200 font-semibold transition">
+              Copy Email & Body
+            </button>
+            <button id="oneClickDownloadAndEmailBtn" type="button" class="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-slate-950 font-bold text-xs transition flex items-center gap-1.5 shadow-lg shadow-amber-500/15">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+              <span>Download JPG + Open Email Client ↗</span>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-6 shadow-2xl space-y-4">
+        
+        <!-- Preview Top Bar & Export Actions -->
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
+            <h2 class="text-sm font-bold text-white uppercase tracking-wider">Live QSL Preview</h2>
+            <span id="filenamePreview" class="text-xs font-qsl text-slate-300 bg-slate-950 px-2.5 py-0.5 rounded border border-slate-800">EA5HPF-de-KR4ODA_DigiQSL.jpg</span>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <select id="exportScaleSelect" class="bg-slate-950 border border-slate-700 rounded-xl px-2.5 py-2 text-xs font-qsl text-slate-200 focus:outline-none" title="Choose native 1000x643 or 2x 2000x1286 resolution">
+              <option value="1" selected>1x Native (1000 × 643)</option>
+              <option value="2">2x Ultra HD (2000 × 1286)</option>
+            </select>
+            <button id="downloadJpgBtn" type="button" class="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs sm:text-sm shadow-lg shadow-amber-500/10 transition flex items-center gap-2">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+              <span>Download JPG</span>
+            </button>
+            <button id="downloadPngBtn" type="button" class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-100 border border-slate-700 font-semibold text-xs sm:text-sm transition">
+              PNG
+            </button>
+          </div>
+        </div>
+
+        <!-- THE NATIVE 1000 x 643 PIXEL-EXACT QSL CANVAS (Rendered at 2x internal backing store for razor-sharp preview) -->
+        <div class="relative rounded-xl overflow-hidden bg-slate-950 border border-slate-800 shadow-inner flex items-center justify-center">
+          <canvas id="qslCanvas" width="2000" height="1286" class="w-full h-auto block"></canvas>
+        </div>
+
+        <!-- Bottom Specs Bar -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[11px] text-slate-400 pt-1">
+          <div class="bg-slate-950/60 px-3 py-1.5 rounded-lg border border-slate-800/80">
+            Font: <strong class="text-slate-200 font-qsl">DejaVu Sans Mono</strong> (400 & 700)
+          </div>
+          <div class="bg-slate-950/60 px-3 py-1.5 rounded-lg border border-slate-800/80">
+            Station Box: <strong class="text-slate-200 font-qsl">635, 496 (352×135px Solid White)</strong>
+          </div>
+          <div class="bg-slate-950/60 px-3 py-1.5 rounded-lg border border-slate-800/80">
+            QSO Grid: <strong class="text-slate-200 font-qsl">13, 563 (613×68px, 1px Borders)</strong>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </main>
+
+  <script>
+    /********************************************************************
+     * PIXEL-EXACT DIGIQSL ENGINE (1000 x 643 NATIVE COORDINATE GRID)
+     * Uses genuine DejaVu Sans Mono Regular (400) & Bold (700),
+     * 100% solid white Station Box (635, 496, 352x135),
+     * crisp 1px borders with 0.5px pixel-snapping, continuous fine
+     * dotted baseline leaders, and Overwrite Existing Card mode.
+     ********************************************************************/
+    const canvas = document.getElementById('qslCanvas');
+    const ctx = canvas.getContext('2d');
+
+    let uploadedImage = null;
+    let bgMode = 'builtin'; // 'builtin' | 'overwrite' | 'photo'
+    let parsedQsoList = [];
+
+    function showToast(msg) {
+      const banner = document.getElementById('toastBanner');
+      const text = document.getElementById('toastText');
+      text.textContent = msg;
+      banner.classList.remove('hidden');
+      clearTimeout(window.__toastTimer);
+      window.__toastTimer = setTimeout(() => {
+        banner.classList.add('hidden');
+      }, 2800);
+    }
+
+    /********************************************************************
+     * BUILT-IN SUNSET LAKE, BLUE RIDGE MOUNTAINS & YAGI TOWER ARTWORK
+     * Drawn on the 1000 x 643 native coordinate grid.
+     ********************************************************************/
+    function drawReferenceIllustration1000(ctx) {
+      const W = 1000, H = 643;
+
+      // 1. Sky Gradient (Deep slate-indigo top -> warm golden-peach sunset horizon)
+      const skyGrad = ctx.createLinearGradient(0, 14, 0, 305);
+      skyGrad.addColorStop(0.0, '#2a3d5a');
+      skyGrad.addColorStop(0.32, '#4d6a81');
+      skyGrad.addColorStop(0.66, '#b09780');
+      skyGrad.addColorStop(0.88, '#eea860');
+      skyGrad.addColorStop(1.0, '#f7be6d');
+      ctx.fillStyle = skyGrad;
+      ctx.fillRect(14, 14, 972, 295);
+
+      // Swept high-altitude cirrus cloud streaks
+      ctx.save();
+      ctx.strokeStyle = 'rgba(255, 246, 228, 0.24)';
+      ctx.lineWidth = 5;
+      ctx.beginPath();
+      ctx.moveTo(150, 175);
+      ctx.quadraticCurveTo(560, 112, 986, 62);
+      ctx.stroke();
+
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.moveTo(235, 195);
+      ctx.quadraticCurveTo(640, 138, 986, 96);
+      ctx.stroke();
+
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.moveTo(500, 212);
+      ctx.quadraticCurveTo(770, 190, 986, 170);
+      ctx.stroke();
+      ctx.restore();
+
+      // 2. Concentric Radio Wave Rings centered on the Yagi Antenna Masthead (x=176, y=130)
+      ctx.save();
+      const antX = 176, antY = 130;
+      [62, 102, 142, 186, 236].forEach((r, idx) => {
+        ctx.beginPath();
+        ctx.arc(antX, antY, r, 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(255, 238, 195, ${0.24 - idx * 0.035})`;
+        ctx.lineWidth = 3.4;
+        ctx.stroke();
+      });
+      ctx.restore();
+
+      // 3. Layered Blue/Teal Distant Mountain Ridges
+      function fillPolygon(pts, color) {
+        ctx.beginPath();
+        pts.forEach(([x, y], i) => (i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y)));
+        ctx.closePath();
+        ctx.fillStyle = color;
+        ctx.fill();
+      }
+
+      // Farthest pale blue horizon ridge
+      fillPolygon([
+        [14, 631], [14, 276], [95, 273], [195, 281], [300, 275], [415, 286],
+        [525, 285], [635, 270], [708, 279], [815, 266], [908, 280], [986, 288], [986, 631]
+      ], '#6391ae');
+
+      // Mid-distant slate-blue ridge
+      fillPolygon([
+        [14, 631], [14, 296], [82, 303], [180, 293], [286, 312], [386, 295],
+        [494, 310], [608, 299], [728, 315], [855, 305], [986, 318], [986, 631]
+      ], '#3f7699');
+
+      // Closer deep teal-blue mountain mass
+      fillPolygon([
+        [14, 631], [14, 320], [108, 316], [208, 330], [315, 326], [428, 336],
+        [520, 356], [634, 363], [768, 346], [900, 340], [986, 346], [986, 631]
+      ], '#265c7d');
+
+      // 4. Tranquil Lake Water Surface
+      const lakeGrad = ctx.createLinearGradient(0, 335, 0, 631);
+      lakeGrad.addColorStop(0, '#4d8bad');
+      lakeGrad.addColorStop(0.42, '#367598');
+      lakeGrad.addColorStop(1, '#235978');
+      ctx.fillStyle = lakeGrad;
+      ctx.fillRect(14, 340, 972, 291);
+
+      // Dark teal forested peninsulas jutting into the lake
+      fillPolygon([
+        [14, 435], [14, 353], [140, 350], [286, 366], [454, 383], [594, 400], [614, 414], [14, 435]
+      ], '#184b68');
+
+      // Mid-right wooded peninsula with sandy shoreline
+      fillPolygon([[546, 416], [710, 416], [720, 421], [546, 421]], '#d4c39b');
+      fillPolygon([[520, 393], [608, 396], [710, 417], [520, 417]], '#1b5169');
+
+      // Right shoreline spit
+      fillPolygon([[834, 454], [986, 448], [986, 458], [834, 458]], '#d4c39b');
+
+      // Stylized pine tree helper
+      function drawPine(tx, ty, scale, color = '#123845') {
+        ctx.save();
+        ctx.translate(tx, ty);
+        ctx.scale(scale, scale);
+        ctx.fillStyle = color;
+        for (let i = 0; i < 4; i++) {
+          ctx.beginPath();
+          ctx.moveTo(0, -37 + i * 7.5);
+          ctx.lineTo(-12 - i * 2.8, -17 + i * 8.8);
+          ctx.lineTo(12 + i * 2.8, -17 + i * 8.8);
+          ctx.closePath();
+          ctx.fill();
+        }
+        ctx.restore();
+      }
+
+      [644, 657, 670, 684, 697].forEach((x, idx) => drawPine(x, 416, 0.42 + (idx % 2) * 0.12, '#143d4d'));
+      [860, 877, 894, 914, 937, 963, 982].forEach((x, idx) => drawPine(x, 453, 0.55 + (idx % 3) * 0.18, '#103342'));
+
+      // 5. White Sailboat on the Lake (x=748, y=461)
+      ctx.save();
+      const bx = 748, by = 461;
+      ctx.fillStyle = 'rgba(255,255,255,0.26)';
+      ctx.fillRect(bx - 5, by + 3.5, 11, 2);
+      ctx.fillStyle = '#1e293b';
+      fillPolygon([[bx - 8, by], [bx + 8, by], [bx + 5.5, by + 3.5], [bx - 6, by + 3.5]], '#1e293b');
+      fillPolygon([[bx - 0.7, by - 1.5], [bx - 0.7, by - 19], [bx - 6.8, by - 1.5]], '#f8fafc');
+      fillPolygon([[bx + 0.7, by - 1.5], [bx + 0.7, by - 16], [bx + 6, by - 1.5]], '#e2e8f0');
+      ctx.restore();
+
+      // 6. Left Foreground Foliage & Pine Trees
+      ctx.fillStyle = '#9c4c27';
+      ctx.beginPath();
+      ctx.arc(94, 454, 64, 0, Math.PI * 2);
+      ctx.arc(160, 464, 56, 0, Math.PI * 2);
+      ctx.arc(40, 460, 60, 0, Math.PI * 2);
+      ctx.fill();
+
+      drawPine(37, 414, 2.5, '#0f2c38');
+      drawPine(97, 430, 2.1, '#133642');
+      drawPine(604, 554, 2.1, '#12323d');
+
+      // 7. Tall Lattice Radio Tower + Guy Wires + 3-Element Yagi Antenna
+      ctx.save();
+      const towerX = 175.5;
+      const towerTopY = 112;
+      const towerBottomY = 450;
+
+      // Guy wires
+      ctx.strokeStyle = '#182631';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(towerX, 174);
+      ctx.lineTo(24, 430);
+      ctx.moveTo(towerX, 226);
+      ctx.lineTo(19, 346);
+      ctx.moveTo(towerX, 174);
+      ctx.lineTo(350, 434);
+      ctx.stroke();
+
+      // Tower legs & mast
+      ctx.strokeStyle = '#1a242d';
+      ctx.lineWidth = 2.3;
+      ctx.beginPath();
+      ctx.moveTo(towerX - 5.5, towerBottomY);
+      ctx.lineTo(towerX - 2, towerTopY + 50);
+      ctx.moveTo(towerX + 5.5, towerBottomY);
+      ctx.lineTo(towerX + 2, towerTopY + 50);
+      ctx.moveTo(towerX, towerTopY + 50);
+      ctx.lineTo(towerX, towerTopY - 10);
+      ctx.stroke();
+
+      // Lattice cross-bracing
+      ctx.lineWidth = 1.1;
+      for (let y = towerTopY + 54; y < towerBottomY; y += 10.5) {
+        const spread = 2 + ((y - (towerTopY + 54)) / (towerBottomY - (towerTopY + 54))) * 3.5;
+        ctx.beginPath();
+        ctx.moveTo(towerX - spread, y);
+        ctx.lineTo(towerX + spread, y + 5.5);
+        ctx.moveTo(towerX + spread, y);
+        ctx.lineTo(towerX - spread, y + 5.5);
+        ctx.stroke();
+      }
+
+      // Yagi Boom & Elements
+      ctx.strokeStyle = '#1a242d';
+      ctx.lineWidth = 2.1;
+      ctx.beginPath();
+      ctx.moveTo(towerX - 74, towerTopY + 3);
+      ctx.lineTo(towerX + 64, towerTopY + 37);
+      ctx.stroke();
+
+      const elements = [
+        { cx: towerX - 50, cy: towerTopY + 9, dx: 47, dy: -21 },
+        { cx: towerX - 10, cy: towerTopY + 19, dx: 41, dy: -19 },
+        { cx: towerX + 30, cy: towerTopY + 28, dx: 36, dy: -17 }
+      ];
+      ctx.lineWidth = 1.7;
+      elements.forEach(el => {
+        ctx.beginPath();
+        ctx.moveTo(el.cx - el.dx, el.cy - el.dy);
+        ctx.lineTo(el.cx + el.dx, el.cy + el.dy);
+        ctx.stroke();
+      });
+      ctx.restore();
+
+      // 8. Foreground Layered Rock Outcrop (Bottom-Left above QSO Table)
+      ctx.save();
+      const rockLayers = [
+        { pts: [[106, 494], [240, 430], [346, 430], [506, 464], [503, 496], [320, 510], [106, 520]], fill: '#e5cfa3' },
+        { pts: [[160, 504], [314, 474], [506, 464], [501, 498], [346, 516], [160, 530]], fill: '#b89f78' },
+        { pts: [[94, 540], [254, 490], [496, 504], [493, 544], [300, 564], [94, 570]], fill: '#d6be94' },
+        { pts: [[120, 564], [324, 530], [486, 538], [476, 576], [280, 594], [120, 590]], fill: '#877961' }
+      ];
+      rockLayers.forEach(layer => {
+        fillPolygon(layer.pts, layer.fill);
+        ctx.strokeStyle = '#1d323a';
+        ctx.lineWidth = 1.7;
+        ctx.stroke();
+      });
+      ctx.restore();
+    }
+
+    // Helper: Fine continuous dotted baseline leader (11px DejaVu Sans Mono periods every 6.6px)
+    function drawFineDottedLeader(targetCtx, xStart, xEnd, yBaseline) {
+      targetCtx.save();
+      targetCtx.fillStyle = '#9eb0c0';
+      targetCtx.font = '400 11px "DejaVu Sans Mono", monospace';
+      targetCtx.textAlign = 'left';
+      targetCtx.textBaseline = 'alphabetic';
+      for (let x = xStart; x <= xEnd; x += 6.6) {
+        targetCtx.fillText('.', x, yBaseline);
+      }
+      targetCtx.restore();
+    }
+
+    /********************************************************************
+     * CORE COMPOSITOR: DRAWS ON A 1000 x 643 LOGICAL COORDINATE SYSTEM
+     * Exact pixel-for-pixel geometry, borders, colors, and DejaVu Sans Mono
+     ********************************************************************/
+    function renderCardToContext(targetCtx, scaleFactor = 2) {
+      const W = 1000;
+      const H = 643;
+
+      const redColor = document.getElementById('colorRed').value || '#9c2d23';
+      const blueColor = document.getElementById('colorBlue').value || '#123c69';
+
+      targetCtx.save();
+      targetCtx.scale(scaleFactor, scaleFactor);
+
+      // 1. Background / Artwork Layer
+      if (uploadedImage && bgMode === 'overwrite') {
+        targetCtx.drawImage(uploadedImage, 0, 0, W, H);
+      } else {
+        // Cream Outer Postcard Matting (#F4EBDC: top 14px, left 14px, right 14px, bottom 13px)
+        targetCtx.fillStyle = '#f4ebdc';
+        targetCtx.fillRect(0, 0, W, H);
+
+        // Inner Clipped Artwork Area (x=14, y=14, w=972, h=616)
+        targetCtx.save();
+        targetCtx.beginPath();
+        targetCtx.rect(14, 14, 972, 616);
+        targetCtx.clip();
+
+        if (uploadedImage && bgMode === 'photo') {
+          const innerW = 972, innerH = 616;
+          const imgScale = Math.max(innerW / uploadedImage.width, innerH / uploadedImage.height);
+          const drawW = uploadedImage.width * imgScale;
+          const drawH = uploadedImage.height * imgScale;
+          const drawX = 14 + (innerW - drawW) / 2;
+          const drawY = 14 + (innerH - drawH) / 2;
+          targetCtx.drawImage(uploadedImage, drawX, drawY, drawW, drawH);
+        } else {
+          drawReferenceIllustration1000(targetCtx);
+        }
+        targetCtx.restore();
+      }
+
+      // 2. Top-Left Callsign Rounded Badge (x=24, y=24, h=85, rx=8)
+      const myCallText = (document.getElementById('myCall').value || 'KR4ODA').toUpperCase().trim();
+      targetCtx.save();
+      targetCtx.font = '400 61px "DejaVu Sans Mono", monospace';
+      const measuredCallW = targetCtx.measureText(myCallText).width;
+      const badgeX = 24;
+      const badgeY = 24;
+      const badgeW = Math.max(266, Math.round(measuredCallW + 44));
+      const badgeH = 85;
+
+      const callBoxAlpha = (uploadedImage && bgMode === 'overwrite') ? 1.0 : 0.92;
+      targetCtx.fillStyle = `rgba(244, 248, 250, ${callBoxAlpha})`;
+      targetCtx.beginPath();
+      targetCtx.roundRect(badgeX, badgeY, badgeW, badgeH, 8);
+      targetCtx.fill();
+
+      // Callsign Text: Regular 400 61px DejaVu Sans Mono in brick red (#9C2D23)
+      targetCtx.fillStyle = redColor;
+      targetCtx.textAlign = 'center';
+      targetCtx.textBaseline = 'middle';
+      targetCtx.fillText(myCallText, badgeX + badgeW / 2, badgeY + badgeH / 2 + 2);
+      targetCtx.restore();
+
+      // 3. Bottom-Left QSO Confirmation Table (x=13.5, y=563.5, w=612, h=66)
+      const tableX = 13.5;
+      const tableY = 563.5;
+      const tableW = 612;
+      const row1H = 29; // y: 563.5 -> 592.5
+      const row2H = 37; // y: 592.5 -> 629.5
+      const tableH = row1H + row2H; // 66px
+
+      targetCtx.save();
+      const effectiveQsoAlpha = (uploadedImage && bgMode === 'overwrite') ? 1.0 : 0.90;
+      targetCtx.fillStyle = `rgba(245, 248, 250, ${effectiveQsoAlpha})`;
+      targetCtx.fillRect(tableX, tableY, tableW, tableH);
+
+      // Crisp 1px charcoal/black borders
+      targetCtx.strokeStyle = '#1a1a1a';
+      targetCtx.lineWidth = 1;
+      targetCtx.strokeRect(tableX, tableY, tableW, tableH);
+
+      // Horizontal middle row divider at y = 592.5
+      targetCtx.beginPath();
+      targetCtx.moveTo(tableX, tableY + row1H);
+      targetCtx.lineTo(tableX + tableW, tableY + row1H);
+      targetCtx.stroke();
+
+      // Exact 6 Column Definitions (177 + 113 + 68 + 108 + 80 + 66 = 612px)
+      const qsoCols = [
+        { header: 'CONFIRMING QSO WITH', val: (document.getElementById('dxCall').value || '').toUpperCase().trim(), w: 177, valFont: '400 19px "DejaVu Sans Mono", monospace' },
+        { header: 'DATE', val: (document.getElementById('qsoDate').value || '').trim(), w: 113, valFont: '400 15px "DejaVu Sans Mono", monospace' },
+        { header: 'UTC', val: (document.getElementById('qsoUtc').value || '').trim(), w: 68, valFont: '400 15px "DejaVu Sans Mono", monospace' },
+        { header: 'MHZ', val: (document.getElementById('qsoMhz').value || '').trim(), w: 108, valFont: '400 15px "DejaVu Sans Mono", monospace' },
+        { header: 'MODE', val: (document.getElementById('qsoMode').value || '').toUpperCase().trim(), w: 80, valFont: '400 15px "DejaVu Sans Mono", monospace' },
+        { header: 'RST', val: (document.getElementById('qsoRst').value || '').trim(), w: 66, valFont: '400 15px "DejaVu Sans Mono", monospace' }
+      ];
+
+      let curX = tableX;
+      targetCtx.textAlign = 'center';
+      targetCtx.textBaseline = 'middle';
+
+      qsoCols.forEach((col, i) => {
+        if (i > 0) {
+          targetCtx.beginPath();
+          targetCtx.moveTo(curX, tableY);
+          targetCtx.lineTo(curX, tableY + tableH);
+          targetCtx.stroke();
+        }
+        const centerX = curX + col.w / 2;
+
+        // Header Row: Bold 700 13px DejaVu Sans Mono (#1A1A1A)
+        targetCtx.fillStyle = '#1a1a1a';
+        targetCtx.font = '700 13px "DejaVu Sans Mono", monospace';
+        targetCtx.fillText(col.header, centerX, tableY + row1H / 2 + 0.5);
+
+        // Value Row: Regular 400 DejaVu Sans Mono (#9C2D23)
+        targetCtx.fillStyle = redColor;
+        targetCtx.font = col.valFont;
+        targetCtx.fillText(col.val, centerX, tableY + row1H + row2H / 2 + 1);
+
+        curX += col.w;
+      });
+      targetCtx.restore();
+
+      // 4. Bottom-Right Station Info Box (x=635.5, y=496.5, w=352, h=134) — 100% SOLID WHITE (#FAFCFE)
+      const boxX = 635.5;
+      const boxY = 496.5;
+      const boxW = 352;
+      const boxH = 134;
+
+      targetCtx.save();
+      targetCtx.fillStyle = '#fafcfe';
+      targetCtx.fillRect(boxX, boxY, boxW, boxH);
+
+      // Crisp 1px charcoal/black border
+      targetCtx.strokeStyle = '#1a1a1a';
+      targetCtx.lineWidth = 1;
+      targetCtx.strokeRect(boxX, boxY, boxW, boxH);
+
+      targetCtx.textBaseline = 'alphabetic';
+
+      // ROW 1 (baseline y = 521): TNX QSO, VY 73 DE ..... Pranav Sharma
+      const r1Y = 521;
+      targetCtx.fillStyle = '#1a1a1a';
+      targetCtx.textAlign = 'left';
+      targetCtx.font = '700 13px "DejaVu Sans Mono", monospace';
+      targetCtx.fillText('TNX QSO, VY 73 DE', 647, r1Y);
+
+      drawFineDottedLeader(targetCtx, 791, 975, r1Y);
+
+      targetCtx.fillStyle = blueColor;
+      targetCtx.textAlign = 'center';
+      targetCtx.font = '400 16px "DejaVu Sans Mono", monospace';
+      targetCtx.fillText(document.getElementById('myName').value.trim(), 883, r1Y - 1);
+
+      // ROW 2 (baseline y = 553): RIG .... IC-7300MK2   PWR ... 100 W
+      const r2Y = 553;
+      targetCtx.fillStyle = '#1a1a1a';
+      targetCtx.textAlign = 'left';
+      targetCtx.font = '700 13px "DejaVu Sans Mono", monospace';
+      targetCtx.fillText('RIG', 647, r2Y);
+
+      drawFineDottedLeader(targetCtx, 676, 868, r2Y);
+
+      targetCtx.fillStyle = blueColor;
+      targetCtx.textAlign = 'center';
+      targetCtx.font = '400 16px "DejaVu Sans Mono", monospace';
+      targetCtx.fillText(document.getElementById('myRig').value.trim(), 772, r2Y - 1);
+
+      targetCtx.fillStyle = '#1a1a1a';
+      targetCtx.textAlign = 'left';
+      targetCtx.font = '700 13px "DejaVu Sans Mono", monospace';
+      targetCtx.fillText('PWR', 877, r2Y);
+
+      drawFineDottedLeader(targetCtx, 905, 975, r2Y);
+
+      targetCtx.fillStyle = blueColor;
+      targetCtx.textAlign = 'center';
+      targetCtx.font = '400 16px "DejaVu Sans Mono", monospace';
+      targetCtx.fillText(document.getElementById('myPwr').value.trim(), 940, r2Y - 1);
+
+      // ROW 3 (baseline y = 585): ANT ........ GXP Yagi antennas
+      const r3Y = 585;
+      targetCtx.fillStyle = '#1a1a1a';
+      targetCtx.textAlign = 'left';
+      targetCtx.font = '700 13px "DejaVu Sans Mono", monospace';
+      targetCtx.fillText('ANT', 647, r3Y);
+
+      drawFineDottedLeader(targetCtx, 676, 975, r3Y);
+
+      targetCtx.fillStyle = blueColor;
+      targetCtx.textAlign = 'center';
+      targetCtx.font = '400 16px "DejaVu Sans Mono", monospace';
+      targetCtx.fillText(document.getElementById('myAnt').value.trim(), 825.5, r3Y - 1);
+
+      // ROW 4 (baseline y = 614): QTH ...... New York (or New York, NY if state toggle enabled)   PSE QSL
+      const r4Y = 614;
+      targetCtx.fillStyle = '#1a1a1a';
+      targetCtx.textAlign = 'left';
+      targetCtx.font = '700 13px "DejaVu Sans Mono", monospace';
+      targetCtx.fillText('QTH', 647, r4Y);
+
+      drawFineDottedLeader(targetCtx, 676, 900, r4Y);
+
+      const rawQth = document.getElementById('myQth').value.trim();
+      const rawState = document.getElementById('myState').value.trim();
+      const appendState = document.getElementById('showStateOnCardToggle').checked;
+      const renderedQth = (appendState && rawState)
+        ? (rawQth ? `${rawQth}, ${rawState}` : rawState)
+        : rawQth;
+
+      targetCtx.fillStyle = blueColor;
+      targetCtx.textAlign = 'center';
+      targetCtx.font = '400 16px "DejaVu Sans Mono", monospace';
+      targetCtx.fillText(renderedQth, 788, r4Y - 1);
+
+      // PSE QSL Stamp (Bold 700 15px right-aligned at x = 976)
+      const stampVal = document.getElementById('qslStamp').value;
+      if (stampVal) {
+        targetCtx.fillStyle = blueColor;
+        targetCtx.textAlign = 'right';
+        targetCtx.font = '700 15px "DejaVu Sans Mono", monospace';
+        targetCtx.fillText(stampVal, 976, 613);
+      }
+
+      // Optional DigiQSL.com watermark (Off by default)
+      if (document.getElementById('showWatermarkToggle').checked) {
+        targetCtx.fillStyle = '#7a8b99';
+        targetCtx.textAlign = 'right';
+        targetCtx.font = '400 9.5px "DejaVu Sans Mono", monospace';
+        targetCtx.fillText('DigiQSL.com', 976, 626);
+      }
+
+      targetCtx.restore();
+      targetCtx.restore();
+    }
+
+    function renderQSLCard() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      renderCardToContext(ctx, 2); // 2x internal backing store for razor-sharp preview
+
+      const dxClean = (document.getElementById('dxCall').value || 'DX').toUpperCase().trim().replace(/[^A-Z0-9\/]/g, '');
+      const myClean = (document.getElementById('myCall').value || 'MYCALL').toUpperCase().trim().replace(/[^A-Z0-9\/]/g, '');
+      document.getElementById('filenamePreview').textContent = `${dxClean}-de-${myClean}_DigiQSL.jpg`;
+    }
+
+    /********************************************************************
+     * MULTI-STATION PROFILES MANAGER (PERSISTENT IN LOCALSTORAGE)
+     ********************************************************************/
+    const STATIONS_STORAGE_KEY = 'qslStudioStations_v2';
+    const ACTIVE_STATION_KEY = 'qslStudioActiveStationId_v2';
+
+    const DEFAULT_STATIONS = [
+      {
+        id: 'st_default_1',
+        profileName: 'KR4ODA — New York Base',
+        myCall: 'KR4ODA',
+        myName: 'Pranav Sharma',
+        myRig: 'IC-7300MK2',
+        myPwr: '100 W',
+        myAnt: 'GXP Yagi antennas',
+        myQth: 'New York',
+        myState: 'NY',
+        showStateOnCard: false,
+        qslStamp: 'PSE QSL'
+      },
+      {
+        id: 'st_default_2',
+        profileName: 'KR4ODA/P — POTA Field Setup',
+        myCall: 'KR4ODA/P',
+        myName: 'Pranav Sharma',
+        myRig: 'FT-891',
+        myPwr: '50 W',
+        myAnt: 'EFHW 40-10m Wire',
+        myQth: 'Adirondacks',
+        myState: 'NY',
+        showStateOnCard: true,
+        qslStamp: 'TNX QSL'
+      }
+    ];
+
+    let savedStations = [];
+    let activeStationId = '';
+
+    function loadStationsFromStorage() {
+      try {
+        const raw = localStorage.getItem(STATIONS_STORAGE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            savedStations = parsed;
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to parse saved stations:', e);
+      }
+      if (!savedStations.length) {
+        savedStations = JSON.parse(JSON.stringify(DEFAULT_STATIONS));
+      }
+      const savedActiveId = localStorage.getItem(ACTIVE_STATION_KEY);
+      const found = savedStations.find(s => s.id === savedActiveId);
+      activeStationId = found ? found.id : savedStations[0].id;
+    }
+
+    function persistStationsToStorage() {
+      try {
+        localStorage.setItem(STATIONS_STORAGE_KEY, JSON.stringify(savedStations));
+        localStorage.setItem(ACTIVE_STATION_KEY, activeStationId);
+      } catch (e) {
+        console.warn('Could not persist stations:', e);
+      }
+    }
+
+    function renderStationSelectorUI() {
+      const pillsContainer = document.getElementById('stationPillsContainer');
+      const dropdown = document.getElementById('stationSelectDropdown');
+      const countBadge = document.getElementById('stationCountBadge');
+
+      pillsContainer.innerHTML = '';
+      dropdown.innerHTML = '';
+      countBadge.textContent = `${savedStations.length} Saved`;
+
+      savedStations.forEach(st => {
+        const isSelected = st.id === activeStationId;
+
+        // Pill Card
+        const cardBtn = document.createElement('button');
+        cardBtn.type = 'button';
+        cardBtn.className = isSelected
+          ? 'text-left p-2.5 rounded-xl border border-amber-500 bg-amber-500/10 transition flex flex-col justify-between gap-1'
+          : 'text-left p-2.5 rounded-xl border border-slate-800 bg-slate-950/70 hover:bg-slate-800/70 transition flex flex-col justify-between gap-1';
+
+        const locSummary = st.myState ? `${st.myQth} (${st.myState})` : st.myQth;
+        cardBtn.innerHTML = `
+          <div class="flex items-center justify-between gap-1 w-full">
+            <span class="font-qsl font-bold text-xs ${isSelected ? 'text-amber-400' : 'text-white'} truncate">${st.myCall || 'NOCALL'}</span>
+            <span class="text-[10px] font-qsl px-1.5 py-0.5 rounded bg-slate-900 text-slate-300 border border-slate-700 shrink-0">${st.myPwr || '100 W'}</span>
+          </div>
+          <div class="text-[11px] text-slate-300 truncate">${st.profileName || st.myCall}</div>
+          <div class="text-[10px] font-qsl text-slate-400 truncate">${st.myRig || ''} • ${locSummary || ''}</div>
+        `;
+        cardBtn.addEventListener('click', () => selectStationById(st.id));
+        pillsContainer.appendChild(cardBtn);
+
+        // Dropdown Option
+        const opt = document.createElement('option');
+        opt.value = st.id;
+        opt.textContent = `${st.profileName || st.myCall} — [${st.myCall} | ${st.myRig} | ${st.myPwr} | ${locSummary}]`;
+        if (isSelected) opt.selected = true;
+        dropdown.appendChild(opt);
+      });
+    }
+
+    function applyStationToInputs(st) {
+      if (!st) return;
+      document.getElementById('stationProfileName').value = st.profileName || '';
+      document.getElementById('myCall').value = st.myCall || '';
+      document.getElementById('myName').value = st.myName || '';
+      document.getElementById('myRig').value = st.myRig || '';
+      document.getElementById('myPwr').value = st.myPwr || '';
+      document.getElementById('myAnt').value = st.myAnt || '';
+      document.getElementById('myQth').value = st.myQth || '';
+      document.getElementById('myState').value = st.myState || '';
+      document.getElementById('showStateOnCardToggle').checked = Boolean(st.showStateOnCard);
+      document.getElementById('qslStamp').value = st.qslStamp !== undefined ? st.qslStamp : 'PSE QSL';
+
+      // Sync default station callsign inside Extension Modal
+      const extStationInput = document.getElementById('extDefaultStationInput');
+      if (extStationInput) extStationInput.value = st.myCall || 'KR4ODA';
+    }
+
+    function selectStationById(stationId) {
+      const target = savedStations.find(s => s.id === stationId);
+      if (!target) return;
+      activeStationId = target.id;
+      applyStationToInputs(target);
+      persistStationsToStorage();
+      renderStationSelectorUI();
+      renderQSLCard();
+    }
+
+    function syncActiveStationFromInputs() {
+      const st = savedStations.find(s => s.id === activeStationId);
+      if (!st) return;
+      st.profileName = document.getElementById('stationProfileName').value;
+      st.myCall = document.getElementById('myCall').value.toUpperCase().trim();
+      st.myName = document.getElementById('myName').value;
+      st.myRig = document.getElementById('myRig').value;
+      st.myPwr = document.getElementById('myPwr').value;
+      st.myAnt = document.getElementById('myAnt').value;
+      st.myQth = document.getElementById('myQth').value;
+      st.myState = document.getElementById('myState').value.toUpperCase().trim();
+      st.showStateOnCard = document.getElementById('showStateOnCardToggle').checked;
+      st.qslStamp = document.getElementById('qslStamp').value;
+
+      persistStationsToStorage();
+      renderStationSelectorUI();
+    }
+
+    // Station Manager Buttons (+ Add, Duplicate, Delete, Export/Import JSON)
+    document.getElementById('stationSelectDropdown').addEventListener('change', e => {
+      selectStationById(e.target.value);
+    });
+
+    document.getElementById('addNewStationBtn').addEventListener('click', () => {
+      const newStation = {
+        id: 'st_' + Date.now(),
+        profileName: `Station #${savedStations.length + 1}`,
+        myCall: document.getElementById('myCall').value || 'KR4ODA',
+        myName: document.getElementById('myName').value || 'Pranav Sharma',
+        myRig: 'IC-7300',
+        myPwr: '100 W',
+        myAnt: 'Dipole',
+        myQth: 'New York',
+        myState: 'NY',
+        showStateOnCard: false,
+        qslStamp: 'PSE QSL'
+      };
+      savedStations.push(newStation);
+      selectStationById(newStation.id);
+      document.getElementById('stationProfileName').focus();
+      document.getElementById('stationProfileName').select();
+      showToast('Added new station profile — edit any field to auto-save!');
+    });
+
+    document.getElementById('duplicateStationBtn').addEventListener('click', () => {
+      const current = savedStations.find(s => s.id === activeStationId) || savedStations[0];
+      const copy = JSON.parse(JSON.stringify(current));
+      copy.id = 'st_' + Date.now();
+      copy.profileName = `${current.profileName} (Copy)`;
+      savedStations.push(copy);
+      selectStationById(copy.id);
+      showToast(`Duplicated "${current.profileName}"`);
+    });
+
+    document.getElementById('deleteStationBtn').addEventListener('click', () => {
+      if (savedStations.length <= 1) {
+        showToast('At least 1 station profile must remain.');
+        return;
+      }
+      const removed = savedStations.find(s => s.id === activeStationId);
+      savedStations = savedStations.filter(s => s.id !== activeStationId);
+      selectStationById(savedStations[0].id);
+      showToast(`Deleted station "${removed ? removed.profileName : ''}"`);
+    });
+
+    document.getElementById('exportStationsJsonBtn').addEventListener('click', () => {
+      const blob = new Blob([JSON.stringify(savedStations, null, 2)], { type: 'application/json' });
+      const link = document.createElement('a');
+      link.download = 'qsl_saved_stations.json';
+      link.href = URL.createObjectURL(blob);
+      link.click();
+      showToast(`Exported ${savedStations.length} stations to JSON`);
+    });
+
+    document.getElementById('importStationsJsonInput').addEventListener('change', e => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = ev => {
+        try {
+          const imported = JSON.parse(ev.target.result);
+          if (Array.isArray(imported) && imported.length > 0) {
+            savedStations = imported;
+            selectStationById(savedStations[0].id);
+            showToast(`Imported ${imported.length} station profiles!`);
+          } else {
+            showToast('Invalid stations JSON file');
+          }
+        } catch (err) {
+          showToast('Could not parse stations JSON file');
+        }
+      };
+      reader.readAsText(file);
+    });
+
+    // Bind Station Inputs to Auto-Save & Redraw
+    ['stationProfileName', 'myCall', 'myName', 'myRig', 'myPwr', 'myAnt', 'myQth', 'myState', 'showStateOnCardToggle', 'qslStamp'].forEach(id => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.addEventListener('input', () => {
+        syncActiveStationFromInputs();
+        renderQSLCard();
+      });
+      el.addEventListener('change', () => {
+        syncActiveStationFromInputs();
+        renderQSLCard();
+      });
+    });
+
+    // Quick Transmit Power Pills
+    document.querySelectorAll('.pwr-pill').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const pwrInput = document.getElementById('myPwr');
+        if (pwrInput) {
+          pwrInput.value = btn.dataset.pwr;
+          syncActiveStationFromInputs();
+          renderQSLCard();
+        }
+      });
+    });
+
+    /********************************************************************
+     * UPGRADED QRZ.COM URL QUERY PARAMETER RECEIVER & MERGED SIMULATOR
+     * Supports: ?call=&date=&utc=&mhz=&mode=&rst=&name=&email=&qth=
+     *           &state=&grid=&qslinfo=&station=&source=
+     ********************************************************************/
+    function getNowUtcStrings() {
+      const now = new Date();
+      const yyyy = now.getUTCFullYear();
+      const mm = String(now.getUTCMonth() + 1).padStart(2, '0');
+      const dd = String(now.getUTCDate()).padStart(2, '0');
+      const hh = String(now.getUTCHours()).padStart(2, '0');
+      const min = String(now.getUTCMinutes()).padStart(2, '0');
+      return { date: `${yyyy}-${mm}-${dd}`, utc: `${hh}:${min}` };
+    }
+
+    function updateMatchedStationBadge(stationLabel) {
+      const badge = document.getElementById('qrzMatchedStationBadge');
+      if (badge) {
+        badge.textContent = `Station Matched: ${stationLabel}`;
+      }
+    }
+
+    function applyQrzQueryParams(searchString) {
+      const rawQuery = searchString || window.location.search || (window.location.hash.includes('?') ? window.location.hash.split('?')[1] : '');
+      if (!rawQuery) return false;
+
+      const params = new URLSearchParams(rawQuery);
+      const dxCall = params.get('call') || params.get('dx') || params.get('dxcall');
+      const dateParam = params.get('date') || params.get('qso_date');
+      const utcParam = params.get('utc') || params.get('time') || params.get('time_on');
+      const mhzParam = params.get('mhz') || params.get('freq') || params.get('frequency');
+      const modeParam = params.get('mode');
+      const rstParam = params.get('rst') || params.get('rst_sent');
+      const nameParam = params.get('name') || params.get('op');
+      const qthParam = params.get('qth') || params.get('city');
+      const stateParam = params.get('state');
+      const emailParam = params.get('email');
+      const gridParam = params.get('grid') || params.get('gridsquare');
+      const qslInfoParam = params.get('qslinfo') || params.get('qslmgr');
+      const stationParam = params.get('station') || params.get('mycall') || params.get('de');
+      const sourceParam = params.get('source');
+
+      if (!dxCall && !mhzParam && !stationParam && !nameParam && !emailParam) return false;
+
+      // 1. If a station callsign was passed, auto-select the matching saved station profile
+      if (stationParam) {
+        const cleanStation = stationParam.toUpperCase().trim();
+        const matchedStation = savedStations.find(
+          s => (s.myCall || '').toUpperCase().trim() === cleanStation ||
+               (s.profileName || '').toUpperCase().includes(cleanStation)
+        );
+        if (matchedStation) {
+          selectStationById(matchedStation.id);
+          updateMatchedStationBadge(`${matchedStation.myCall} (${matchedStation.profileName})`);
+        } else {
+          const myCallEl = document.getElementById('myCall');
+          if (myCallEl) myCallEl.value = cleanStation;
+          updateMatchedStationBadge(`${cleanStation} (Custom)`);
+        }
+      } else {
+        const currentSt = savedStations.find(s => s.id === activeStationId) || savedStations[0];
+        if (currentSt) updateMatchedStationBadge(`${currentSt.myCall} (${currentSt.profileName})`);
+      }
+
+      // 2. Populate QSO confirmation fields
+      const nowUtc = getNowUtcStrings();
+      const dxCallEl = document.getElementById('dxCall');
+      if (dxCallEl && dxCall) dxCallEl.value = dxCall.toUpperCase().trim();
+
+      const dateEl = document.getElementById('qsoDate');
+      if (dateEl) dateEl.value = dateParam ? dateParam.trim() : nowUtc.date;
+
+      const utcEl = document.getElementById('qsoUtc');
+      if (utcEl) utcEl.value = utcParam ? utcParam.trim() : nowUtc.utc;
+
+      const mhzEl = document.getElementById('qsoMhz');
+      if (mhzEl && mhzParam) mhzEl.value = mhzParam.trim();
+
+      const modeEl = document.getElementById('qsoMode');
+      if (modeEl && modeParam) modeEl.value = modeParam.toUpperCase().trim();
+
+      const rstEl = document.getElementById('qsoRst');
+      if (rstEl && rstParam) rstEl.value = rstParam.trim();
+
+      // 3. Populate Merged Recipient Info / Email Dispatch Banner
+      const dxNameEl = document.getElementById('qrzDxName');
+      if (dxNameEl && nameParam !== null) dxNameEl.value = nameParam;
+
+      const dxQthEl = document.getElementById('qrzDxQth');
+      if (dxQthEl && qthParam !== null) dxQthEl.value = qthParam;
+
+      const dxStateEl = document.getElementById('qrzDxState');
+      if (dxStateEl && stateParam !== null) dxStateEl.value = stateParam;
+
+      const dxEmailEl = document.getElementById('qrzDxEmail');
+      if (dxEmailEl && emailParam !== null) dxEmailEl.value = emailParam;
+
+      const dxGridEl = document.getElementById('qrzDxGrid');
+      if (dxGridEl && gridParam !== null) dxGridEl.value = gridParam;
+
+      const dxQslInfoEl = document.getElementById('qrzDxQslInfo');
+      if (dxQslInfoEl && qslInfoParam !== null) dxQslInfoEl.value = qslInfoParam;
+
+      const sourceBadge = document.getElementById('qrzSourceBadgeText');
+      if (sourceBadge) {
+        sourceBadge.textContent = sourceParam || 'Merged: QRZ Logbook + Profile Fetch';
+      }
+
+      const banner = document.getElementById('qrzPreloadBanner');
+      if (banner) banner.classList.remove('hidden');
+
+      renderQSLCard();
+      showToast(`QRZ Merged Preload: ${dxCall ? dxCall.toUpperCase() : 'QSO'} + ${emailParam || 'Profile Info'} ready!`);
+      return true;
+    }
+
+    // Live Merged QRZ Preload Simulator (cycles through realistic merged Logbook + Profile contacts)
+    const SAMPLE_QRZ_PRELOADS = [
+      {
+        call: 'EA5HPF', date: '2026-10-10', utc: '14:54', mhz: '28.074', mode: 'FT8', rst: '59',
+        name: 'Francisco', qth: 'Valencia', state: 'VC', grid: 'IM99tl',
+        email: 'ea5hpf@qsl.net', qslinfo: 'LoTW • eQSL • Direct & Email QSL OK',
+        station: 'KR4ODA', source: 'Merged: QRZ Logbook + Profile Fetch'
+      },
+      {
+        call: 'W1AW', date: '2026-10-15', utc: '18:22', mhz: '14.074', mode: 'FT8', rst: '-05',
+        name: 'ARRL HQ Operators', qth: 'Newington', state: 'CT', grid: 'FN31pr',
+        email: 'w1aw@arrl.org', qslinfo: 'LoTW Preferred • Bureau or Direct via W1AW',
+        station: 'KR4ODA', source: 'Merged: QRZ Profile + Worked-Before Table'
+      },
+      {
+        call: 'K4ATL', date: '2026-10-15', utc: '21:10', mhz: '7.255', mode: 'SSB', rst: '59',
+        name: 'David Miller', qth: 'Atlanta', state: 'GA', grid: 'EM73ts',
+        email: 'k4atl@arrl.net', qslinfo: 'Email QSL Appreciated • POTA Hunter',
+        station: 'KR4ODA/P', source: 'Merged: QRZ Logbook + Profile Fetch'
+      },
+      {
+        call: 'JA1XYZ', date: '2026-10-14', utc: '23:05', mhz: '21.074', mode: 'FT8', rst: '-09',
+        name: 'Kenji Sato', qth: 'Tokyo', state: '13', grid: 'PM95vq',
+        email: 'ja1xyz@jarl.com', qslinfo: '100% QSL via Email or JARL Bureau',
+        station: 'KR4ODA', source: 'Merged: QRZ Profile (Auto-Revealed Email)'
+      }
+    ];
+    let sampleQrzIdx = 0;
+
+    function triggerSimulatedQrzPreload() {
+      const sample = SAMPLE_QRZ_PRELOADS[sampleQrzIdx % SAMPLE_QRZ_PRELOADS.length];
+      sampleQrzIdx++;
+      const qs = new URLSearchParams(sample).toString();
+      try {
+        window.history.replaceState({}, '', `${window.location.pathname}?${qs}`);
+      } catch (e) {}
+      applyQrzQueryParams(`?${qs}`);
+    }
+
+    document.getElementById('simulateQrzBtn')?.addEventListener('click', triggerSimulatedQrzPreload);
+    document.getElementById('cycleMergedSampleBtn')?.addEventListener('click', triggerSimulatedQrzPreload);
+
+    document.getElementById('toggleQrzBannerBtn')?.addEventListener('click', () => {
+      document.getElementById('qrzPreloadBanner')?.classList.toggle('hidden');
+    });
+
+    document.getElementById('closeQrzBannerBtn')?.addEventListener('click', () => {
+      document.getElementById('qrzPreloadBanner')?.classList.add('hidden');
+    });
+
+    // Build Email Subject & Body for 1-Click QSL Dispatch
+    function buildQslEmailData() {
+      const dxCall = (document.getElementById('dxCall').value || 'DX').toUpperCase().trim();
+      const myCall = (document.getElementById('myCall').value || 'MYCALL').toUpperCase().trim();
+      const dxName = document.getElementById('qrzDxName').value.trim() || 'OM/YL';
+      const myName = document.getElementById('myName').value.trim();
+      const email = document.getElementById('qrzDxEmail').value.trim();
+      const date = document.getElementById('qsoDate').value.trim();
+      const utc = document.getElementById('qsoUtc').value.trim();
+      const mhz = document.getElementById('qsoMhz').value.trim();
+      const mode = document.getElementById('qsoMode').value.trim();
+      const rst = document.getElementById('qsoRst').value.trim();
+      const myRig = document.getElementById('myRig').value.trim();
+      const myPwr = document.getElementById('myPwr').value.trim();
+      const myAnt = document.getElementById('myAnt').value.trim();
+      const myQth = document.getElementById('myQth').value.trim();
+
+      const subject = `QSL Card: ${dxCall} de ${myCall} (${date} ${utc}Z • ${mhz} MHz ${mode})`;
+      const body = [
+        `Hello ${dxName} (${dxCall}),`,
+        ``,
+        `Thank you very much for our ${mode} QSO on ${date} at ${utc} UTC (${mhz} MHz, RST ${rst}).`,
+        `I have attached my digital QSL card (${dxCall}-de-${myCall}_DigiQSL.jpg) confirming our contact.`,
+        ``,
+        `Station Details (${myCall}):`,
+        `• Rig: ${myRig} (${myPwr})`,
+        `• Antenna: ${myAnt}`,
+        `• QTH: ${myQth}`,
+        ``,
+        `Vy 73 de ${myCall}`,
+        `${myName}`
+      ].join('\n');
+      return { email, subject, body };
+    }
+
+    function copyTextToClipboard(text, successMsg) {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      try {
+        document.execCommand('copy');
+        showToast(successMsg || 'Copied to clipboard!');
+      } catch (err) {
+        showToast('Could not copy text');
+      }
+      document.body.removeChild(ta);
+    }
+
+    document.getElementById('copyEmailDetailsBtn')?.addEventListener('click', () => {
+      const { email, subject, body } = buildQslEmailData();
+      copyTextToClipboard(`To: ${email}\nSubject: ${subject}\n\n${body}`, 'Copied recipient email, subject & QSL message!');
+    });
+
+    // 1-Click: Download JPG + Copy Email Body + Open Email Client
+    document.getElementById('oneClickDownloadAndEmailBtn')?.addEventListener('click', () => {
+      exportCard('jpeg');
+      const { email, subject, body } = buildQslEmailData();
+      copyTextToClipboard(body, 'Downloaded JPG & copied email text — opening mail client!');
+      setTimeout(() => {
+        window.open(`mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`, '_blank');
+      }, 250);
+    });
+
+    /********************************************************************
+     * UPGRADED 3-FILE CHROME EXTENSION GENERATOR
+     * (manifest.json + background.js + content.js)
+     ********************************************************************/
+    function getManifestJsonString() {
+      return JSON.stringify({
+        manifest_version: 3,
+        name: "QRZ to Digital QSL Studio (Auto-Email & Logbook Merger)",
+        version: "2.0.0",
+        description: "Auto-reveals hidden QRZ emails, scrapes Worked-Before QSOs, and merges QRZ Logbook + Callsign Profile data in one click.",
+        permissions: ["storage"],
+        host_permissions: [
+          "https://www.qrz.com/*",
+          "https://qrz.com/*",
+          "https://logbook.qrz.com/*"
+        ],
+        background: {
+          service_worker: "background.js"
+        },
+        content_scripts: [
+          {
+            matches: [
+              "https://www.qrz.com/db/*",
+              "https://qrz.com/db/*",
+              "https://logbook.qrz.com/*"
+            ],
+            js: ["content.js"],
+            run_at: "document_idle"
+          }
+        ]
+      }, null, 2);
+    }
+
+    function getBackgroundJsString() {
+      return `// ============================================================================
+// QRZ Cross-Origin Profile & Email Merger Service Worker (background.js)
+// Fetches https://www.qrz.com/db/<CALLSIGN> with user's active session cookies
+// when clicking "QSL ↗" inside logbook.qrz.com so Profile + Logbook merge!
+// ============================================================================
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  if (!msg || msg.type !== 'FETCH_QRZ_PROFILE' || !msg.callsign) return false;
+
+  const callsign = encodeURIComponent(String(msg.callsign).trim().toUpperCase());
+  const profileUrl = \`https://www.qrz.com/db/\${callsign}\`;
+
+  fetch(profileUrl, {
+    method: 'GET',
+    credentials: 'include',
+    headers: { 'Accept': 'text/html,application/xhtml+xml' }
+  })
+    .then(res => res.text())
+    .then(html => {
+      const data = parseQrzProfileHtml(html, callsign);
+      sendResponse({ ok: true, data });
+    })
+    .catch(err => {
+      sendResponse({ ok: false, error: String(err) });
+    });
+
+  return true; // Keep message channel open for async response
+});
+
+function parseQrzProfileHtml(html, callsign) {
+  const result = {
+    name: '',
+    email: '',
+    qth: '',
+    state: '',
+    grid: '',
+    qslinfo: ''
+  };
+
+  // 1. Extract email from mailto:, embedded JS variables, or obfuscated strings
+  const mailtoMatch = html.match(/mailto:([a-zA-Z0-9._%+\\-]+@[a-zA-Z0-9.\\-]+\\.[a-zA-Z]{2,})/i);
+  if (mailtoMatch) {
+    result.email = mailtoMatch[1].trim();
+  }
+  if (!result.email) {
+    // Check QRZ's inline script email variables or encoded strings
+    const jsEmailMatch = html.match(/['"]([a-zA-Z0-9._%+\\-]+@[a-zA-Z0-9.\\-]+\\.[a-zA-Z]{2,})['"]/);
+    if (jsEmailMatch && !/qrz\\.com|example\\.com/i.test(jsEmailMatch[1])) {
+      result.email = jsEmailMatch[1].trim();
+    }
+  }
+  if (!result.email) {
+    // Check split user + domain variables in QRZ email reveal scripts
+    const partsMatch = html.match(/em_a[^;]*?['"]([a-zA-Z0-9._%+\\-]+)['"]\\s*\\+\\s*['"]@['"]\\s*\\+\\s*['"]([a-zA-Z0-9.\\-]+\\.[a-zA-Z]{2,})['"]/i);
+    if (partsMatch) {
+      result.email = \`\${partsMatch[1]}@\${partsMatch[2]}\`;
+    }
+  }
+
+  // 2. Extract Operator Name from #calldata bold span
+  const nameMatch =
+    html.match(/id=["']calldata["'][\\s\\S]{0,600}?<b[^>]*>([^<]{2,50})<\\/b>/i) ||
+    html.match(/<span[^>]*style=["'][^"']*font-weight:\\s*bold[^"']*["'][^>]*>([^<]{2,50})<\\/span>/i);
+  if (nameMatch && nameMatch[1].trim().toUpperCase() !== callsign) {
+    result.name = decodeHtmlEntities(nameMatch[1].trim());
+  }
+
+  // 3. Extract Grid Square (e.g. FN31pr, IM99tl, EM74)
+  const gridMatch =
+    html.match(/Grid\\s*Square[\\s\\S]{0,120}?([A-R]{2}\\d{2}[a-x]{0,2})/i) ||
+    html.match(/\\b([A-R]{2}\\d{2}[a-x]{2})\\b/);
+  if (gridMatch) {
+    result.grid = gridMatch[1].trim();
+  }
+
+  // 4. Extract US State / Province
+  const stateMatch = html.match(/(?:US\\s*State|State)[\\s\\S]{0,100}?<td[^>]*>([^<]{1,30})<\\/td>/i);
+  if (stateMatch) {
+    result.state = decodeHtmlEntities(stateMatch[1].trim());
+  }
+
+  // 5. Extract QTH / City from address block or QTH row
+  const qthMatch = html.match(/(?:QTH|City|Town)[\\s\\S]{0,100}?<td[^>]*>([^<]{2,45})<\\/td>/i);
+  if (qthMatch) {
+    result.qth = decodeHtmlEntities(qthMatch[1].trim());
+  } else {
+    // Fallback: parse city line inside #calldata paragraph
+    const addrBlock = html.match(/id=["']calldata["'][\\s\\S]{0,900}?<p[^>]*>([\\s\\S]{0,400}?)<\\/p>/i);
+    if (addrBlock) {
+      const lines = addrBlock[1]
+        .split(/<br\\s*\\/?>/i)
+        .map(l => decodeHtmlEntities(l.replace(/<[^>]+>/g, '').trim()))
+        .filter(Boolean);
+      if (lines.length >= 2) {
+        const cityLine = lines[lines.length - 2] || lines[1];
+        result.qth = cityLine.replace(/,\\s*[A-Z]{2}\\s+\\d{5}.*$/, '').trim();
+      }
+    }
+  }
+
+  // 6. Extract QSL Info / QSL Manager note
+  const qslByMatch = html.match(/(?:QSL\\s*By|QSL\\s*Info|QSL\\s*Mgr)[\\s\\S]{0,120}?<td[^>]*>([^<]{2,80})<\\/td>/i);
+  if (qslByMatch) {
+    result.qslinfo = decodeHtmlEntities(qslByMatch[1].trim());
+  }
+
+  return result;
+}
+
+function decodeHtmlEntities(str) {
+  return String(str || '')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#039;/g, "'");
+}`;
+    }
+
+    function getContentJsString() {
+      const studioUrl = (document.getElementById('extStudioUrlInput').value || window.location.origin + window.location.pathname).trim();
+      const defaultStation = (document.getElementById('extDefaultStationInput').value || 'KR4ODA').toUpperCase().trim();
+
+      return `// ============================================================================
+// QRZ.com & QRZ Logbook -> Digital QSL Studio Preloader (content.js v2.0)
+// • Feature A: Auto-reveals hidden QRZ emails (#em_a) via MutationObserver
+// • Feature B: Scrapes "Worked Before" (#lbook) QSO rows on qrz.com/db/*
+// • Feature C: Merges Logbook row + background Profile fetch on logbook.qrz.com
+// ============================================================================
+(function() {
+  const QSL_STUDIO_URL = ${JSON.stringify(studioUrl)};
+  const DEFAULT_STATION_CALL = ${JSON.stringify(defaultStation)};
+
+  const BAND_TO_DEFAULT_MHZ = {
+    '160M': '1.840', '80M': '3.573', '60M': '5.357', '40M': '7.074',
+    '30M': '10.136', '20M': '14.074', '17M': '18.100', '15M': '21.074',
+    '12M': '24.915', '10M': '28.074', '6M': '50.313', '2M': '144.174', '70CM': '432.100'
+  };
+
+  function getUtcNow() {
+    const d = new Date();
+    return {
+      date: d.toISOString().slice(0, 10),
+      utc: d.toISOString().slice(11, 16)
+    };
+  }
+
+  function buildStudioLink(paramsObj) {
+    const qs = new URLSearchParams();
+    Object.entries(paramsObj).forEach(([k, v]) => {
+      if (v !== undefined && v !== null && String(v).trim() !== '') {
+        qs.set(k, String(v).trim());
+      }
+    });
+    const sep = QSL_STUDIO_URL.includes('?') ? '&' : '?';
+    return QSL_STUDIO_URL + sep + qs.toString();
+  }
+
+  // FEATURE A: Automatically reveal hidden email on qrz.com/db/* and wait up to 600ms
+  async function autoRevealAndExtractEmail(rootEl) {
+    const scope = rootEl || document.getElementById('calldata') || document.body;
+
+    function findEmailInDom() {
+      const mailLink = scope.querySelector('a[href^="mailto:"]') || document.querySelector('#calldata a[href^="mailto:"]');
+      if (mailLink) {
+        return mailLink.getAttribute('href').replace(/^mailto:/i, '').split('?')[0].trim();
+      }
+      const emSpan = document.querySelector('#em_a, #qrz_email, .qrz-email');
+      if (emSpan) {
+        const m = (emSpan.textContent || '').match(/[a-zA-Z0-9._%+\\-]+@[a-zA-Z0-9.\\-]+\\.[a-zA-Z]{2,}/);
+        if (m) return m[0];
+      }
+      return '';
+    }
+
+    let existing = findEmailInDom();
+    if (existing) return existing;
+
+    // Look for QRZ's "Click to view email" trigger and click it programmatically
+    const triggers = [
+      document.querySelector('#em_a a'),
+      document.querySelector('#em_a'),
+      document.querySelector('#qrz_email a'),
+      document.querySelector('[onclick*="email"]'),
+      ...Array.from(scope.querySelectorAll('a, span, button')).filter(el =>
+        /click to view email|show email|view email/i.test(el.textContent || '')
+      )
+    ].filter(Boolean);
+
+    if (triggers.length > 0) {
+      try { triggers[0].click(); } catch (e) {}
+      // Wait up to 600ms via MutationObserver + polling for the email to appear
+      existing = await new Promise(resolve => {
+        let settled = false;
+        const done = (val) => {
+          if (settled) return;
+          settled = true;
+          observer.disconnect();
+          clearInterval(pollTimer);
+          resolve(val || '');
+        };
+        const observer = new MutationObserver(() => {
+          const found = findEmailInDom();
+          if (found) done(found);
+        });
+        observer.observe(scope, { childList: true, subtree: true, characterData: true });
+        const pollTimer = setInterval(() => {
+          const found = findEmailInDom();
+          if (found) done(found);
+        }, 60);
+        setTimeout(() => done(findEmailInDom()), 600);
+      });
+      if (existing) return existing;
+    }
+
+    // Fallback: decode obfuscated email variables in page <script> tags
+    const scriptsText = Array.from(document.scripts).map(s => s.textContent || '').join('\\n');
+    const scriptEmail = scriptsText.match(/['"]([a-zA-Z0-9._%+\\-]+@[a-zA-Z0-9.\\-]+\\.[a-zA-Z]{2,})['"]/);
+    if (scriptEmail && !/qrz\\.com/i.test(scriptEmail[1])) {
+      return scriptEmail[1];
+    }
+    return '';
+  }
+
+  // FEATURE B: Scrape QRZ's embedded "Worked Before" table (#lbook / #logdata) on profile pages
+  function scrapeWorkedBeforeTable() {
+    const result = { date: '', utc: '', mhz: '', mode: '', rst: '', station: '' };
+    const tables = document.querySelectorAll('#lbook table, #logdata table, table');
+    for (const tbl of tables) {
+      const rows = tbl.querySelectorAll('tr');
+      for (const row of rows) {
+        const txt = (row.innerText || '').trim();
+        const dateMatch = txt.match(/\\b(20\\d{2}-\\d{2}-\\d{2})\\b/);
+        const utcMatch = txt.match(/\\b(\\d{2}:\\d{2})\\b/);
+        const modeMatch = txt.match(/\\b(FT8|FT4|SSB|USB|LSB|CW|FM|RTTY|PSK31|JS8)\\b/i);
+        if (dateMatch && (utcMatch || modeMatch)) {
+          result.date = dateMatch[1];
+          if (utcMatch) result.utc = utcMatch[1];
+          if (modeMatch) result.mode = modeMatch[1].toUpperCase();
+
+          const freqMatch = txt.match(/\\b(\\d{1,3}\\.\\d{3,4})\\b/);
+          const bandMatch = txt.match(/\\b(160m|80m|60m|40m|30m|20m|17m|15m|12m|10m|6m|2m|70cm)\\b/i);
+          if (freqMatch) {
+            result.mhz = freqMatch[1];
+          } else if (bandMatch) {
+            result.mhz = BAND_TO_DEFAULT_MHZ[bandMatch[1].toUpperCase()] || '28.074';
+          }
+          result.rst = (result.mode === 'FT8' || result.mode === 'FT4') ? '-08' : '59';
+          return result;
+        }
+      }
+    }
+    return result;
+  }
+
+  // 1. QRZ.COM CALLSIGN BIOGRAPHY PAGE (https://www.qrz.com/db/CALLSIGN)
+  function injectQrzCallsignPageButton() {
+    if (!location.pathname.startsWith('/db/')) return;
+    if (document.getElementById('digiqsl-studio-qrz-btn')) return;
+
+    const dxCall = decodeURIComponent(location.pathname.split('/db/')[1] || '')
+      .split('/')[0]
+      .toUpperCase()
+      .trim();
+    if (!dxCall) return;
+
+    const btn = document.createElement('button');
+    btn.id = 'digiqsl-studio-qrz-btn';
+    btn.type = 'button';
+    btn.textContent = 'Send QSL Card ↗';
+    btn.style.cssText = [
+      'display:inline-flex',
+      'align-items:center',
+      'gap:6px',
+      'margin-left:12px',
+      'padding:5px 12px',
+      'background:#f59e0b',
+      'color:#0f172a',
+      'font-family:monospace,sans-serif',
+      'font-size:13px',
+      'font-weight:700',
+      'border:none',
+      'border-radius:6px',
+      'box-shadow:0 2px 6px rgba(0,0,0,0.25)',
+      'vertical-align:middle',
+      'cursor:pointer'
+    ].join(';');
+
+    btn.addEventListener('click', async () => {
+      const originalText = btn.textContent;
+      btn.textContent = 'Revealing Email & QSO...';
+
+      const email = await autoRevealAndExtractEmail(document.getElementById('calldata'));
+      const worked = scrapeWorkedBeforeTable();
+      const now = getUtcNow();
+
+      let opName = '';
+      let qth = '';
+      let state = '';
+      let grid = '';
+      let qslinfo = '';
+
+      const nameBold = document.querySelector('#calldata p span b, #calldata b');
+      if (nameBold && nameBold.textContent.trim().toUpperCase() !== dxCall) {
+        opName = nameBold.textContent.trim();
+      }
+
+      document.querySelectorAll('tr').forEach(tr => {
+        const label = (tr.cells && tr.cells[0]) ? tr.cells[0].textContent.trim().toLowerCase() : '';
+        const val = (tr.cells && tr.cells[1]) ? tr.cells[1].textContent.trim() : '';
+        if (!val) return;
+        if (label.includes('state') || label === 'us state') state = val;
+        if (label.includes('qth') || label.includes('city') || label.includes('town')) qth = val;
+        if (label.includes('grid')) grid = val.split(/\\s+/)[0];
+        if (label.includes('qsl by') || label.includes('qsl info') || label.includes('qsl mgr')) qslinfo = val;
+      });
+
+      const targetUrl = buildStudioLink({
+        call: dxCall,
+        date: worked.date || now.date,
+        utc: worked.utc || now.utc,
+        mhz: worked.mhz || '28.074',
+        mode: worked.mode || 'FT8',
+        rst: worked.rst || '59',
+        name: opName,
+        email: email,
+        qth: qth,
+        state: state,
+        grid: grid,
+        qslinfo: qslinfo,
+        station: worked.station || DEFAULT_STATION_CALL,
+        source: worked.date ? 'Merged: QRZ Profile + Worked-Before Log' : 'Merged: QRZ Profile (Auto-Revealed Email)'
+      });
+
+      btn.textContent = originalText;
+      window.open(targetUrl, '_blank', 'noopener');
+    });
+
+    const headerTarget =
+      document.querySelector('h1') ||
+      document.querySelector('#csdata') ||
+      document.querySelector('#calldata');
+
+    if (headerTarget) {
+      headerTarget.appendChild(btn);
+    }
+  }
+
+  // 2. QRZ.COM LOGBOOK ROWS (https://logbook.qrz.com/*) — Merges Row QSO + Background Profile Fetch
+  function injectQrzLogbookButtons() {
+    if (!location.hostname.includes('logbook.qrz.com')) return;
+
+    const rows = document.querySelectorAll('table tr');
+    rows.forEach(row => {
+      if (row.dataset.qslInjected) return;
+      const text = (row.innerText || '').trim();
+      const callMatch = text.match(/\\b([A-Z0-9]{1,3}\\d[A-Z0-9]{1,4}(?:\\/[A-Z0-9]+)?)\\b/);
+      const dateMatch = text.match(/\\b(20\\d{2}-\\d{2}-\\d{2})\\b/);
+      const utcMatch = text.match(/\\b(\\d{2}:\\d{2})\\b/);
+      const freqMatch = text.match(/\\b(\\d{1,3}\\.\\d{3,4})\\b/);
+      const bandMatch = text.match(/\\b(160m|80m|60m|40m|30m|20m|17m|15m|12m|10m|6m|2m|70cm)\\b/i);
+      const modeMatch = text.match(/\\b(FT8|FT4|SSB|USB|LSB|CW|FM|RTTY|PSK31|JS8)\\b/i);
+
+      if (callMatch && (dateMatch || freqMatch || bandMatch)) {
+        row.dataset.qslInjected = '1';
+        const dxCall = callMatch[1].toUpperCase();
+        const mhzVal = freqMatch
+          ? freqMatch[1]
+          : (bandMatch ? (BAND_TO_DEFAULT_MHZ[bandMatch[1].toUpperCase()] || '28.074') : '28.074');
+
+        const lastCell = row.cells[row.cells.length - 1];
+        if (!lastCell) return;
+
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.textContent = 'QSL ↗';
+        btn.style.cssText = 'margin-left:6px;padding:2px 8px;background:#f59e0b;color:#0f172a;font-weight:bold;font-size:11px;border:none;border-radius:4px;cursor:pointer;';
+
+        btn.addEventListener('click', (ev) => {
+          ev.stopPropagation();
+          btn.textContent = 'Merging...';
+
+          const baseQso = {
+            call: dxCall,
+            date: dateMatch ? dateMatch[1] : getUtcNow().date,
+            utc: utcMatch ? utcMatch[1] : getUtcNow().utc,
+            mhz: mhzVal,
+            mode: modeMatch ? modeMatch[1].toUpperCase() : 'FT8',
+            rst: '59',
+            station: DEFAULT_STATION_CALL,
+            source: 'Merged: QRZ Logbook + Profile Fetch'
+          };
+
+          if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
+            chrome.runtime.sendMessage({ type: 'FETCH_QRZ_PROFILE', callsign: dxCall }, (resp) => {
+              btn.textContent = 'QSL ↗';
+              const prof = (resp && resp.ok && resp.data) ? resp.data : {};
+              const mergedUrl = buildStudioLink({ ...baseQso, ...prof });
+              window.open(mergedUrl, '_blank', 'noopener');
+            });
+          } else {
+            btn.textContent = 'QSL ↗';
+            window.open(buildStudioLink(baseQso), '_blank', 'noopener');
+          }
+        });
+
+        lastCell.appendChild(btn);
+      }
+    });
+  }
+
+  injectQrzCallsignPageButton();
+  injectQrzLogbookButtons();
+  setInterval(injectQrzLogbookButtons, 2000);
+})();`;
+    }
+
+    function refreshExtensionModalCode() {
+      const mBlock = document.getElementById('manifestCodeBlock');
+      if (mBlock) mBlock.textContent = getManifestJsonString();
+
+      const bgBlock = document.getElementById('backgroundJsCodeBlock');
+      if (bgBlock) bgBlock.textContent = getBackgroundJsString();
+
+      const contentBlock = document.getElementById('contentJsCodeBlock');
+      if (contentBlock) contentBlock.textContent = getContentJsString();
+    }
+
+    document.getElementById('openExtensionModalBtn')?.addEventListener('click', () => {
+      const cleanUrl = window.location.origin + window.location.pathname;
+      const urlInput = document.getElementById('extStudioUrlInput');
+      if (urlInput && !urlInput.value) urlInput.value = cleanUrl;
+      const extStation = document.getElementById('extDefaultStationInput');
+      const myCallInput = document.getElementById('myCall');
+      if (extStation && myCallInput) extStation.value = myCallInput.value || 'KR4ODA';
+      refreshExtensionModalCode();
+      document.getElementById('extensionModal')?.classList.remove('hidden');
+    });
+
+    document.getElementById('closeExtensionModalBtn')?.addEventListener('click', () => {
+      document.getElementById('extensionModal')?.classList.add('hidden');
+    });
+
+    document.getElementById('extStudioUrlInput')?.addEventListener('input', refreshExtensionModalCode);
+    document.getElementById('extDefaultStationInput')?.addEventListener('input', refreshExtensionModalCode);
+
+    document.getElementById('copyManifestBtn')?.addEventListener('click', () => {
+      copyTextToClipboard(getManifestJsonString(), 'Copied manifest.json to clipboard!');
+    });
+
+    document.getElementById('copyBackgroundJsBtn')?.addEventListener('click', () => {
+      copyTextToClipboard(getBackgroundJsString(), 'Copied background.js to clipboard!');
+    });
+
+    document.getElementById('copyContentJsBtn')?.addEventListener('click', () => {
+      copyTextToClipboard(getContentJsString(), 'Copied content.js to clipboard!');
+    });
+
+    function downloadTextFile(filename, content, mimeType) {
+      const blob = new Blob([content], { type: mimeType });
+      const a = document.createElement('a');
+      a.download = filename;
+      a.href = URL.createObjectURL(blob);
+      a.click();
+    }
+
+    document.getElementById('downloadManifestBtn')?.addEventListener('click', () => {
+      downloadTextFile('manifest.json', getManifestJsonString(), 'application/json');
+      showToast('Downloaded manifest.json');
+    });
+
+    document.getElementById('downloadBackgroundJsBtn')?.addEventListener('click', () => {
+      downloadTextFile('background.js', getBackgroundJsString(), 'application/javascript');
+      showToast('Downloaded background.js');
+    });
+
+    document.getElementById('downloadContentJsBtn')?.addEventListener('click', () => {
+      downloadTextFile('content.js', getContentJsString(), 'application/javascript');
+      showToast('Downloaded content.js');
+    });
+
+    document.getElementById('downloadAllExtFilesBtn')?.addEventListener('click', async () => {
+      downloadTextFile('manifest.json', getManifestJsonString(), 'application/json');
+      await new Promise(r => setTimeout(r, 220));
+      downloadTextFile('background.js', getBackgroundJsString(), 'application/javascript');
+      await new Promise(r => setTimeout(r, 220));
+      downloadTextFile('content.js', getContentJsString(), 'application/javascript');
+      showToast('Downloaded manifest.json, background.js, and content.js!');
+    });
+
+    /********************************************************************
+     * EVENT LISTENERS & UI WORKFLOWS
+     ********************************************************************/
+    document.querySelectorAll('#dxCall, #qsoDate, #qsoUtc, #qsoMhz, #qsoMode, #qsoRst, #showWatermarkToggle').forEach(el => {
+      el.addEventListener('input', renderQSLCard);
+      el.addEventListener('change', renderQSLCard);
+    });
+
+    // Background Mode Buttons ('builtin' | 'overwrite' | 'photo')
+    function updateBgModeUI() {
+      document.querySelectorAll('.bgmode-btn').forEach(b => {
+        if (b.dataset.bgmode === bgMode) {
+          b.className = 'bgmode-btn px-3 py-2 rounded-lg border border-amber-500 bg-amber-500/10 text-amber-300 text-xs font-semibold text-center transition';
+        } else {
+          b.className = 'bgmode-btn px-3 py-2 rounded-lg border border-slate-700 bg-slate-800/70 hover:bg-slate-800 text-slate-300 text-xs font-semibold text-center transition';
+        }
+      });
+    }
+
+    document.querySelectorAll('.bgmode-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        bgMode = btn.dataset.bgmode;
+        updateBgModeUI();
+        if (bgMode !== 'builtin' && !uploadedImage) {
+          document.getElementById('bgUploadInput')?.click();
+        }
+        renderQSLCard();
+      });
+    });
+
+    // Upload Existing Card or Custom Background Photo
+    document.getElementById('bgUploadInput')?.addEventListener('change', e => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = ev => {
+        const img = new Image();
+        img.onload = () => {
+          uploadedImage = img;
+          const ratio = img.width / img.height;
+          if (bgMode === 'builtin') {
+            bgMode = (Math.abs(ratio - (1000 / 643)) < 0.04 || /digiqsl/i.test(file.name)) ? 'overwrite' : 'photo';
+            updateBgModeUI();
+          }
+          const uploadLabel = document.getElementById('uploadLabelText');
+          if (uploadLabel) uploadLabel.textContent = `Loaded: ${file.name} (${img.width}×${img.height})`;
+          document.getElementById('clearBgBtn')?.classList.remove('hidden');
+          renderQSLCard();
+          showToast(bgMode === 'overwrite'
+            ? 'Loaded card in Overwrite Mode — replacing boxes seamlessly!'
+            : 'Loaded custom background photo');
+        };
+        img.src = ev.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+
+    document.getElementById('clearBgBtn')?.addEventListener('click', () => {
+      uploadedImage = null;
+      bgMode = 'builtin';
+      updateBgModeUI();
+      const uploadInput = document.getElementById('bgUploadInput');
+      if (uploadInput) uploadInput.value = '';
+      const uploadLabel = document.getElementById('uploadLabelText');
+      if (uploadLabel) uploadLabel.textContent = 'Upload Existing DigiQSL Card or Custom Photo...';
+      document.getElementById('clearBgBtn')?.classList.add('hidden');
+      renderQSLCard();
+    });
+
+    // Quick Frequency & RST Pills
+    document.querySelectorAll('.freq-pill').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const mhzEl = document.getElementById('qsoMhz');
+        const modeEl = document.getElementById('qsoMode');
+        if (mhzEl) mhzEl.value = btn.dataset.mhz;
+        if (modeEl) modeEl.value = btn.dataset.mode;
+        renderQSLCard();
+      });
+    });
+
+    document.querySelectorAll('.rst-pill').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const rstEl = document.getElementById('qsoRst');
+        if (rstEl) rstEl.value = btn.dataset.rst;
+        renderQSLCard();
+      });
+    });
+
+    // Set Current UTC Date & Time
+    document.getElementById('setNowUtcBtn')?.addEventListener('click', () => {
+      const { date, utc } = getNowUtcStrings();
+      const dateEl = document.getElementById('qsoDate');
+      const utcEl = document.getElementById('qsoUtc');
+      if (dateEl) dateEl.value = date;
+      if (utcEl) utcEl.value = utc;
+      renderQSLCard();
+      showToast('Updated to current UTC Date & Time');
+    });
+
+    // Reset to exact Reference Card values
+    document.getElementById('resetExampleBtn')?.addEventListener('click', () => {
+      const dxEl = document.getElementById('dxCall');
+      if (dxEl) dxEl.value = 'EA5HPF';
+      const dateEl = document.getElementById('qsoDate');
+      if (dateEl) dateEl.value = '2026-10-10';
+      const utcEl = document.getElementById('qsoUtc');
+      if (utcEl) utcEl.value = '14:54';
+      const mhzEl = document.getElementById('qsoMhz');
+      if (mhzEl) mhzEl.value = '28.074';
+      const modeEl = document.getElementById('qsoMode');
+      if (modeEl) modeEl.value = 'FT8';
+      const rstEl = document.getElementById('qsoRst');
+      if (rstEl) rstEl.value = '59';
+
+      if (savedStations.length > 0) {
+        savedStations[0] = JSON.parse(JSON.stringify(DEFAULT_STATIONS[0]));
+        selectStationById(savedStations[0].id);
+      }
+      renderQSLCard();
+      showToast('Restored exact EA5HPF-de-KR4ODA reference card');
+    });
+
+    // Export Card at Chosen Resolution (1x Native 1000x643 or 2x 2000x1286)
+    function exportCard(format = 'jpeg') {
+      const scaleSelect = document.getElementById('exportScaleSelect');
+      const scale = scaleSelect ? (parseInt(scaleSelect.value, 10) || 1) : 1;
+      const offCanvas = document.createElement('canvas');
+      offCanvas.width = 1000 * scale;
+      offCanvas.height = 643 * scale;
+      const offCtx = offCanvas.getContext('2d');
+
+      renderCardToContext(offCtx, scale);
+
+      const dxClean = (document.getElementById('dxCall')?.value || 'DX').toUpperCase().trim().replace(/[^A-Z0-9\/]/g, '');
+      const myClean = (document.getElementById('myCall')?.value || 'MYCALL').toUpperCase().trim().replace(/[^A-Z0-9\/]/g, '');
+      const ext = format === 'png' ? 'png' : 'jpg';
+      const mime = format === 'png' ? 'image/png' : 'image/jpeg';
+
+      const link = document.createElement('a');
+      link.download = `${dxClean}-de-${myClean}_DigiQSL.${ext}`;
+      link.href = offCanvas.toDataURL(mime, 0.96);
+      link.click();
+    }
+
+    document.getElementById('downloadJpgBtn')?.addEventListener('click', () => exportCard('jpeg'));
+    document.getElementById('downloadPngBtn')?.addEventListener('click', () => exportCard('png'));
+
+    /********************************************************************
+     * ADIF (.ADI / .ADIF) PARSER & BATCH CARD GENERATOR
+     ********************************************************************/
+    function parseAdifText(adifContent) {
+      const records = [];
+      const rawRecords = adifContent.split(/<eor>/i);
+
+      rawRecords.forEach(rec => {
+        if (!rec.trim()) return;
+        const getField = (tag) => {
+          const regex = new RegExp(`<${tag}:(\\d+)(?::[^>]*)?>([^<]*)`, 'i');
+          const match = rec.match(regex);
+          return match ? match[2].trim() : '';
+        };
+
+        const call = getField('call');
+        if (!call) return;
+
+        let rawDate = getField('qso_date') || '20261010';
+        if (rawDate.length === 8) {
+          rawDate = `${rawDate.slice(0, 4)}-${rawDate.slice(4, 6)}-${rawDate.slice(6, 8)}`;
+        }
+
+        let rawTime = getField('time_on') || '1454';
+        if (rawTime.length >= 4) {
+          rawTime = `${rawTime.slice(0, 2)}:${rawTime.slice(2, 4)}`;
+        }
+
+        const freq = getField('freq') || '28.074';
+        const mode = getField('mode') || 'FT8';
+        const rst = getField('rst_sent') || '59';
+
+        records.push({ call, date: rawDate, utc: rawTime, mhz: freq, mode, rst });
+      });
+
+      return records;
+    }
+
+    function populateAdifTable(qsoArray) {
+      parsedQsoList = qsoArray;
+      const container = document.getElementById('adifTableContainer');
+      const tbody = document.getElementById('adifTableBody');
+      const countLabel = document.getElementById('adifCountLabel');
+
+      tbody.innerHTML = '';
+      if (!qsoArray.length) {
+        container.classList.add('hidden');
+        return;
+      }
+
+      container.classList.remove('hidden');
+      countLabel.textContent = `${qsoArray.length} QSOs loaded — click any row to load onto card`;
+
+      qsoArray.forEach((qso) => {
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-amber-500/10 cursor-pointer transition';
+        tr.innerHTML = `
+          <td class="py-1.5 px-2.5 font-bold text-amber-400">${qso.call}</td>
+          <td class="py-1.5 px-2 text-slate-300">${qso.date}</td>
+          <td class="py-1.5 px-2 text-slate-300">${qso.utc}</td>
+          <td class="py-1.5 px-2 text-slate-300">${qso.mhz}</td>
+          <td class="py-1.5 px-2 text-slate-300">${qso.mode}</td>
+          <td class="py-1.5 px-2 text-slate-300">${qso.rst}</td>
+        `;
+        tr.addEventListener('click', () => {
+          loadQsoIntoEditor(qso);
+          showToast(`Loaded QSO with ${qso.call}`);
+        });
+        tbody.appendChild(tr);
+      });
+    }
+
+    function loadQsoIntoEditor(qso) {
+      document.getElementById('dxCall').value = qso.call;
+      document.getElementById('qsoDate').value = qso.date;
+      document.getElementById('qsoUtc').value = qso.utc;
+      document.getElementById('qsoMhz').value = qso.mhz;
+      document.getElementById('qsoMode').value = qso.mode;
+      document.getElementById('qsoRst').value = qso.rst;
+      renderQSLCard();
+    }
+
+    document.getElementById('adifFileInput')?.addEventListener('change', e => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = ev => {
+        const list = parseAdifText(ev.target.result);
+        populateAdifTable(list);
+        if (list.length > 0) {
+          loadQsoIntoEditor(list[0]);
+          showToast(`Imported ${list.length} QSOs from ${file.name}`);
+        } else {
+          showToast('No valid ADIF QSO records found in file');
+        }
+      };
+      reader.readAsText(file);
+    });
+
+    document.getElementById('loadDemoAdifBtn')?.addEventListener('click', () => {
+      const sampleAdif = `
+        <call:6>EA5HPF <qso_date:8>20261010 <time_on:4>1454 <freq:6>28.074 <mode:3>FT8 <rst_sent:2>59 <eor>
+        <call:6>JA1XYZ <qso_date:8>20261012 <time_on:4>2118 <freq:6>21.074 <mode:3>FT8 <rst_sent:3>-06 <eor>
+        <call:5>G4ABC <qso_date:8>20261014 <time_on:4>1805 <freq:6>14.240 <mode:3>SSB <rst_sent:2>59 <eor>
+        <call:6>VK3DXA <qso_date:8>20261015 <time_on:4>0742 <freq:5>7.074 <mode:3>FT8 <rst_sent:3>-11 <eor>
+        <call:5>PY2AA <qso_date:8>20261015 <time_on:4>1930 <freq:6>28.450 <mode:3>SSB <rst_sent:2>59 <eor>
+      `;
+      const list = parseAdifText(sampleAdif);
+      populateAdifTable(list);
+      loadQsoIntoEditor(list[0]);
+      showToast('Loaded 5 sample DX QSOs');
+    });
+
+    document.getElementById('batchExportAllBtn')?.addEventListener('click', async () => {
+      if (!parsedQsoList.length) return;
+      showToast(`Exporting ${parsedQsoList.length} QSL cards...`);
+      for (let i = 0; i < parsedQsoList.length; i++) {
+        loadQsoIntoEditor(parsedQsoList[i]);
+        await new Promise(r => setTimeout(r, 220));
+        exportCard('jpeg');
+      }
+      showToast(`Finished exporting ${parsedQsoList.length} QSL cards!`);
+    });
+
+    // Initialize Multi-Station Profiles, Font Preload, and QRZ URL Receiver
+    window.onload = async () => {
+      loadStationsFromStorage();
+      const initialStation = savedStations.find(s => s.id === activeStationId) || savedStations[0];
+      applyStationToInputs(initialStation);
+      renderStationSelectorUI();
+
+      try {
+        if (document.fonts && document.fonts.load) {
+          await Promise.all([
+            document.fonts.load('400 16px "DejaVu Sans Mono"'),
+            document.fonts.load('700 13px "DejaVu Sans Mono"'),
+            document.fonts.load('400 61px "DejaVu Sans Mono"')
+          ]);
+        }
+      } catch (e) {
+        console.warn('Font preload fallback:', e);
+      }
+
+      // Check if opened via the QRZ Chrome Extension with URL parameters
+      applyQrzQueryParams(window.location.search);
+      renderQSLCard();
+    };
+  </script>
+</body>
+</html>
