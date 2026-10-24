@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Digital QSL Card Studio & Print Manager</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+    .font-qsl { font-family: 'JetBrains Mono', monospace; }
+    
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #0f172a; }
+    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+    .sheet-preview-container {
+      width: 100%;
+      max-width: 400px;
+      margin: 0 auto;
+      background: #0f172a;
+      border-radius: 12px;
+      padding: 16px;
+    }
+    .pvbox {
+      position: relative;
+      width: 100%;
+      padding-top: 129.4%;
+      background: #fff;
+      border-radius: 4px;
+      overflow: hidden;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+    }
+    .sheet { position: absolute; top: 0; left: 0; right: 0; bottom: 0; }
+    .slot {
+      position: absolute; left: 17.6%; width: 64.7%; height: 31.8%;
+      background: #e2e8f0; border: 1px dashed #94a3b8;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 10px; font-weight: bold; color: #64748b; overflow: hidden;
+    }
+    .slot img { width: 100%; height: 100%; object-fit: cover; }
+    .sheet.fit-contain .slot img { object-fit: contain; background: #fff; }
+    .slot.s1 { top: 2.27%; }
+    .slot.s2 { top: 34.09%; }
+    .slot.s3 { top: 65.90%; }
+    .mark { position: absolute; background: #ef4444; }
+    .mark.h { width: 5.8%; height: 1px; }
+    .mark.v { width: 1px; height: 1.36%; }
+    .sheet.no-marks .mark { display: none; }
+    .edge { position: absolute; top: 2px; left: 50%; transform: translateX(-50%); font-size: 8px; font-weight: bold; color: #ef4444; text-align: center; line-height: 1;}
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen">
+  
+  <!-- Top Navigation -->
+  <nav class="sticky top-0 z-50 bg-slate-900/95 backdrop-blur border-b border-slate-800 px-6 py-3 shadow-lg">
+    <div class="max-w-[1600px] mx-auto flex flex-wrap items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <div class="w-8 h-8 rounded bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center font-bold text-slate-950 shadow-lg shadow-amber-500/20">73</div>
+        <div>
+          <h1 class="text-lg font-bold tracking-tight text-white leading-tight">Digital QSL Studio <span class="text-amber-500">&</span> Print Mgr</h1>
+          <p class="text-[10px] font-medium text-slate-400 uppercase tracking-widest">Pixel-Perfect • 2-Sided • Full Control</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-3">
+        <button id="getChromeExtBtn" class="px-3 py-1.5 rounded-lg text-[11px] font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30 hover:bg-purple-500/40 transition">📦 Get QRZ Chrome Ext.</button>
+        <div class="flex items-center gap-2 bg-slate-950 p-1 rounded-lg border border-slate-800">
+          <button id="tabStudioBtn" class="px-3.5 py-1.5 rounded-lg text-xs font-bold bg-amber-500 text-slate-950 shadow transition">1. Card Studio</button>
+          <button id="tabPrintBtn" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold text-slate-300 hover:text-white transition flex items-center gap-1.5">
+            <span>2. Print Sheets</span>
+            <span id="printQueueBadge" class="bg-blue-500 text-slate-950 px-1.5 py-0.5 rounded text-[9px] font-bold">0/3</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Global Toast Notifications -->
+  <div id="toastContainer" class="fixed bottom-6 right-6 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- MAIN APP CONTAINER -->
+  <main class="max-w-[1600px] mx-auto p-4 sm:p-6 grid grid-cols-1 xl:grid-cols-12 gap-6">
+    
+    <!-- LEFT COLUMN: Data Entry & Controls -->
+    <div class="xl:col-span-5 space-y-6">
+      
+      <!-- TAB 1: STUDIO CONTROLS -->
+      <div id="studioView" class="space-y-6">
+        
+        <!-- SECTION 1: Station Profiles -->
+        <section class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-lg space-y-4">
+          <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+            <div class="flex items-center gap-2">
+              <span class="w-5 h-5 rounded-full bg-blue-500/20 text-blue-400 text-xs font-bold flex items-center justify-center">1</span>
+              <h2 class="text-sm font-bold uppercase tracking-wider text-slate-200">My Stations</h2>
+            </div>
+            <div class="flex items-center gap-2">
+              <button id="addStationBtn" type="button" class="px-2 py-1 rounded bg-amber-500/20 text-amber-400 hover:bg-amber-500/30 text-[10px] font-bold uppercase transition">+ Add</button>
+              <button id="deleteStationBtn" type="button" class="px-2 py-1 rounded bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 text-[10px] font-bold uppercase transition">Delete</button>
+            </div>
+          </div>
+          
+          <div id="stationCardsContainer" class="grid grid-cols-2 gap-2"></div>
+
+          <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-2">
+            <div class="col-span-2 sm:col-span-1">
+              <label class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">My Callsign</label>
+              <div class="flex items-center gap-1">
+                <input id="myCall" type="text" value="KR40DA" class="w-full bg-slate-950 border border-slate-700 focus:border-amber-500 focus:outline-none rounded-lg px-3 py-2 text-sm font-bold font-qsl uppercase text-white">
+              </div>
+            </div>
+            <div class="col-span-2">
+              <label class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Operator Name</label>
+              <input id="myName" type="text" value="Pranav Sharma" class="w-full bg-slate-950 border border-slate-700 focus:border-amber-500 focus:outline-none rounded-lg px-3 py-2 text-sm font-qsl text-white">
+            </div>
+            <div class="col-span-2 sm:col-span-1">
+              <label class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Rig</label>
+              <input id="myRig" type="text" value="IC-7300MK2" class="w-full bg-slate-950 border border-slate-700 focus:border-amber-500 focus:outline-none rounded-lg px-3 py-2 text-sm font-qsl text-white">
+            </div>
+            <div class="col-span-2 sm:col-span-1">
+              <label class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Power</label>
+              <input id="myPwr" type="text" value="100 W" class="w-full bg-slate-950 border border-slate-700 focus:border-amber-500 focus:outline-none rounded-lg px-3 py-2 text-sm font-qsl text-white">
+            </div>
+            <div class="col-span-2 sm:col-span-1">
+              <label class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">My Grid</label>
+              <input id="myGrid" type="text" value="FN30" class="w-full bg-slate-950 border border-slate-700 focus:border-amber-500 focus:outline-none rounded-lg px-3 py-2 text-sm font-qsl uppercase text-white">
+            </div>
+            <div class="col-span-2 sm:col-span-3">
+              <label class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Antenna</label>
+              <input id="myAnt" type="text" value="GXP Yagi antennas" class="w-full bg-slate-950 border border-slate-700 focus:border-amber-500 focus:outline-none rounded-lg px-3 py-2 text-sm font-qsl text-white">
+            </div>
+            <div class="col-span-2 sm:col-span-1">
+              <label class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">City / QTH</label>
+              <input id="myQth" type="text" value="New York" class="w-full bg-slate-950 border border-slate-700 focus:border-amber-500 focus:outline-none rounded-lg px-3 py-2 text-sm font-qsl text-white">
+            </div>
+            <div>
+              <div class="flex items-center justify-between mb-1">
+                <label class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">State/Prov</label>
+              </div>
+              <input id="myState" type="text" value="NY" class="w-full bg-slate-950 border border-slate-700 focus:border-amber-500 focus:outline-none rounded-lg px-3 py-2 text-sm font-qsl uppercase text-white">
+            </div>
+            <div>
+              <label class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">County</label>
+              <input id="myCounty" type="text" value="New York" class="w-full bg-slate-950 border border-slate-700 focus:border-amber-500 focus:outline-none rounded-lg px-3 py-2 text-sm font-qsl text-white">
+            </div>
+            <div class="col-span-2">
+              <label class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">CQ / ITU Zones</label>
+              <input id="myZones" type="text" value="CQ 05 / ITU 08" class="w-full bg-slate-950 border border-slate-700 focus:border-amber-500 focus:outline-none rounded-lg px-3 py-2 text-sm font-qsl text-white">
+            </div>
+            <div class="col-span-2 sm:col-span-1">
+              <label class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">My QSL Route</label>
+              <input id="myQslMgr" type="text" value="DIRECT / LOTW" class="w-full bg-slate-950 border border-slate-700 focus:border-amber-500 focus:outline-none rounded-lg px-3 py-2 text-sm font-qsl uppercase text-white">
+            </div>
+          </div>
+        </section>
+
+        <!-- SECTION 2: QSO Details & QSL Manager Routing -->
+        <section class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-lg space-y-4">
+          <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+            <div class="flex items-center gap-2">
+              <span class="w-5 h-5 rounded-full bg-amber-500/20 text-amber-400 text-xs font-bold flex items-center justify-center">2</span>
+              <h2 class="text-sm font-bold uppercase tracking-wider text-slate-200">QSO & Routing</h2>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <button id="loadEa5Btn" type="button" class="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 text-[10px] font-bold uppercase transition">Load EA5HPF</button>
+              <button id="loadHh2Btn" type="button" class="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 text-[10px] font-bold uppercase transition">Load HH2JR</button>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <div class="col-span-2 sm:col-span-1">
+              <label class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">DX Call</label>
+              <input id="dxCall" type="text" value="EA5HPF" class="w-full bg-slate-950 border border-slate-700 focus:border-amber-500 focus:outline-none rounded-lg px-3 py-2 text-sm font-qsl uppercase text-white">
+            </div>
+            <div>
+              <label class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Date</label>
+              <input id="qsoDate" type="text" value="2026-10-10" class="w-full bg-slate-950 border border-slate-700 focus:border-amber-500 focus:outline-none rounded-lg px-3 py-2 text-sm font-qsl text-white">
+            </div>
+            <div>
+              <label class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">UTC</label>
+              <input id="qsoUtc" type="text" value="14:54" class="w-full bg-slate-950 border border-slate-700 focus:border-amber-500 focus:outline-none rounded-lg px-3 py-2 text-sm font-qsl text-white">
+            </div>
+            <div>
+              <label class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">MHz</label>
+              <input id="qsoMhz" type="text" value="28.074" class="w-full bg-slate-950 border border-slate-700 focus:border-amber-500 focus:outline-none rounded-lg px-3 py-2 text-sm font-qsl text-white">
+            </div>
+            <div>
+              <label class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Mode</label>
+              <input id="qsoMode" type="text" value="FT8" class="w-full bg-slate-950 border border-slate-700 focus:border-amber-500 focus:outline-none rounded-lg px-3 py-2 text-sm font-qsl uppercase text-white">
+            </div>
+            <div>
+              <label class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">RST</label>
+              <input id="qsoRst" type="text" value="59" class="w-full bg-slate-950 border border-slate-700 focus:border-amber-500 focus:outline-none rounded-lg px-3 py-2 text-sm font-qsl text-white">
+            </div>
+            <div>
+              <label class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">QSL Action</label>
+              <input id="qslAction" type="text" value="PSE QSL" class="w-full bg-slate-950 border border-slate-700 focus:border-amber-500 focus:outline-none rounded-lg px-3 py-2 text-sm font-qsl text-white">
+            </div>
+            <div>
+              <label class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">DX Grid</label>
+              <input id="dxGrid" type="text" value="IM99" class="w-full bg-slate-950 border border-slate-700 focus:border-amber-500 focus:outline-none rounded-lg px-3 py-2 text-sm font-qsl uppercase text-white">
+            </div>
+            <div>
+              <label class="block text-[11px] font-semibold uppercase tracking-wider text-amber-500 mb-1">Manager Call (VIA)</label>
+              <input id="dxQslVia" type="text" value="KD4HOA" placeholder="e.g. EA5KB" class="w-full bg-slate-950 border border-amber-500/50 focus:border-amber-500 focus:outline-none rounded-lg px-3 py-2 text-sm font-qsl uppercase text-white">
+            </div>
+            <div class="col-span-2">
+              <label class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Remarks</label>
+              <input id="qsoRemarks" type="text" value="Thank you for the QSO! 73" class="w-full bg-slate-950 border border-slate-700 focus:border-amber-500 focus:outline-none rounded-lg px-3 py-2 text-sm font-qsl text-white">
+            </div>
+          </div>
+        </section>
+
+        <!-- SECTION 3: Full Control Artwork & Layout -->
+        <section class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-lg space-y-4">
+          <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+            <div class="flex items-center gap-2">
+              <span class="w-5 h-5 rounded-full bg-purple-500/20 text-purple-400 text-xs font-bold flex items-center justify-center">3</span>
+              <h2 class="text-sm font-bold uppercase tracking-wider text-slate-200">Full Control: Artwork & Layout</h2>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <!-- Front Controls -->
+            <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 space-y-3">
+              <h3 class="text-xs font-bold text-purple-400 uppercase tracking-widest border-b border-slate-800 pb-2">Front Side</h3>
+              <div>
+                <label class="block text-[10px] font-semibold uppercase text-slate-400 mb-1">Custom Front Background</label>
+                <input id="frontBgUpload" type="file" accept="image/*" class="w-full text-xs text-slate-300 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-purple-500/20 file:text-purple-300 hover:file:bg-purple-500/30 cursor-pointer">
+              </div>
+              <div class="flex items-center justify-between gap-2">
+                <div class="w-full">
+                  <label class="block text-[10px] font-semibold uppercase text-slate-400 mb-1">Badge X Pos</label>
+                  <input id="badgeX" type="range" min="0" max="100" value="4" class="w-full accent-purple-500">
+                </div>
+                <div class="w-full">
+                  <label class="block text-[10px] font-semibold uppercase text-slate-400 mb-1">Badge Y Pos</label>
+                  <input id="badgeY" type="range" min="0" max="100" value="5" class="w-full accent-purple-500">
+                </div>
+              </div>
+              <div>
+                <label class="block text-[10px] font-semibold uppercase text-slate-400 mb-1">Front Accent Color</label>
+                <div class="flex items-center gap-2">
+                  <input id="frontColor" type="color" value="#9b2c20" class="w-8 h-8 rounded cursor-pointer bg-transparent border-0 p-0">
+                  <span class="text-xs text-slate-400 font-qsl" id="frontColorVal">#9b2c20</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Back Controls -->
+            <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 space-y-3">
+              <h3 class="text-xs font-bold text-emerald-400 uppercase tracking-widest border-b border-slate-800 pb-2">Back Side</h3>
+              <div>
+                <label class="block text-[10px] font-semibold uppercase text-slate-400 mb-1">Custom Back Background</label>
+                <input id="backBgUpload" type="file" accept="image/*" class="w-full text-xs text-slate-300 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-emerald-500/20 file:text-emerald-300 hover:file:bg-emerald-500/30 cursor-pointer">
+              </div>
+              <div class="flex items-center justify-between gap-2">
+                <div class="w-full">
+                  <label class="block text-[10px] font-semibold uppercase text-slate-400 mb-1">Overlay Theme</label>
+                  <select id="backTheme" class="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-white">
+                    <option value="light" selected>Light Mode</option>
+                    <option value="dark">Dark Mode</option>
+                  </select>
+                </div>
+                <div class="w-full">
+                  <label class="block text-[10px] font-semibold uppercase text-slate-400 mb-1">Overlay Opacity</label>
+                  <input id="backOpacity" type="range" min="0" max="100" value="95" class="w-full accent-emerald-500">
+                </div>
+              </div>
+              <div>
+                <label class="block text-[10px] font-semibold uppercase text-slate-400 mb-1">Back Accent Color</label>
+                <div class="flex items-center gap-2">
+                  <input id="backColor" type="color" value="#113f67" class="w-8 h-8 rounded cursor-pointer bg-transparent border-0 p-0">
+                  <span class="text-xs text-slate-400 font-qsl" id="backColorVal">#113f67</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="flex items-center gap-4 pt-3 border-t border-slate-800">
+            <label class="flex items-center gap-2 text-sm cursor-pointer hover:opacity-80 transition">
+              <input id="showQrCodeToggle" type="checkbox" class="rounded bg-slate-900 border-slate-600 text-purple-500 focus:ring-0 w-4 h-4">
+              <span class="font-semibold text-slate-200">Show QR Code</span>
+            </label>
+            <label class="flex items-center gap-2 text-sm cursor-pointer hover:opacity-80 transition">
+              <input id="showStampToggle" type="checkbox" class="rounded bg-slate-900 border-slate-600 text-purple-500 focus:ring-0 w-4 h-4">
+              <span class="font-semibold text-slate-200">Show Verified Stamp</span>
+            </label>
+          </div>
+        </section>
+      </div>
+
+      <!-- TAB 2: PRINT QUEUE VIEW -->
+      <div id="printView" class="hidden space-y-6">
+        <section class="bg-slate-900 border border-blue-500/30 rounded-2xl p-5 shadow-lg space-y-3">
+          <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+            <div class="flex items-center gap-2">
+              <span class="w-5 h-5 rounded-full bg-blue-500/20 text-blue-400 text-xs font-bold flex items-center justify-center">V</span>
+              <h2 class="text-sm font-bold uppercase tracking-wider text-slate-200">Saved Cards Vault</h2>
+              <span id="vaultCountBadge" class="bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded text-[10px] font-bold">0</span>
+            </div>
+            <button id="clearVaultBtn" type="button" class="px-2 py-1 rounded bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 text-[10px] font-bold uppercase transition">Clear Vault</button>
+          </div>
+          <div id="vaultGrid" class="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-96 overflow-y-auto pr-1"></div>
+        </section>
+      </div>
+    </div>
+
+    <!-- RIGHT COLUMN: Sticky Preview & Export -->
+    <div class="xl:col-span-7 space-y-6">
+      
+      <div class="sticky top-20 bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-2xl space-y-4">
+        
+        <div class="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h3 class="text-sm font-bold text-slate-200 uppercase tracking-wider flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              Live Canvas Preview
+            </h3>
+            <p class="text-[10px] text-slate-400 mt-0.5">Exact 1500 × 965 px standard postcard scale</p>
+          </div>
+        </div>
+
+        <div class="space-y-4 max-h-[70vh] overflow-y-auto pr-2 custom-scrollbar">
+          <div id="frontPreviewWrapper" class="relative">
+            <span class="absolute top-2 right-2 bg-slate-900/80 text-white text-[10px] font-bold px-2 py-1 rounded backdrop-blur z-10">FRONT</span>
+            <canvas id="qslCanvas" width="1500" height="965" class="w-full rounded-lg shadow-xl border border-slate-700"></canvas>
+          </div>
+          <div id="backPreviewWrapper" class="relative">
+            <span class="absolute top-2 right-2 bg-slate-900/80 text-white text-[10px] font-bold px-2 py-1 rounded backdrop-blur z-10">BACK</span>
+            <canvas id="qslBackCanvas" width="1500" height="965" class="w-full rounded-lg shadow-xl border border-slate-700"></canvas>
+          </div>
+        </div>
+
+        <div class="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-800">
+          <div class="flex gap-2">
+            <button id="downloadFrontJpgBtn" type="button" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-semibold text-slate-300 transition">↓ Front JPG</button>
+            <button id="downloadBackJpgBtn" type="button" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-semibold text-slate-300 transition">↓ Back JPG</button>
+          </div>
+          <div class="flex gap-2">
+            <button id="saveToVaultBtn" type="button" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-sm font-medium text-amber-400 transition">+ Save to Vault</button>
+            <button id="sendToPrintQueueBtn" type="button" class="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-sm shadow-lg shadow-amber-500/20 transition">Send to Print Queue ↗</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3-UP Print Sheet Preview -->
+      <div id="printQueueContainer" class="hidden bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-2xl space-y-4">
+        <h3 class="text-sm font-bold text-slate-200 uppercase tracking-wider flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full bg-blue-400 animate-pulse"></span>
+          3-Up Print Sheet Queue (8.5" × 11")
+        </h3>
+        <div id="queueSlotsGrid" class="grid grid-cols-1 sm:grid-cols-3 gap-3"></div>
+        
+        <div class="flex flex-wrap items-center justify-between gap-4 bg-slate-950 p-4 rounded-xl border border-slate-800 mt-4">
+          <div class="flex flex-wrap items-center gap-4">
+            <label class="flex items-center gap-2 text-sm text-slate-300 cursor-pointer">
+              <input id="printFitToggle" type="checkbox" checked class="rounded bg-slate-900 border-slate-700 text-emerald-500 focus:ring-0">
+              <span>Fit whole image</span>
+            </label>
+            <div class="flex bg-slate-900 p-1 rounded-lg border border-slate-800">
+              <button id="sheetPreviewFrontsBtn" type="button" class="px-2.5 py-1 rounded text-xs font-bold bg-emerald-500 text-slate-950 transition">Preview Fronts</button>
+              <button id="sheetPreviewBacksBtn" type="button" class="px-2.5 py-1 rounded text-xs font-semibold text-slate-400 hover:text-white transition">Preview Backs</button>
+            </div>
+          </div>
+          <div class="flex flex-wrap items-center gap-3">
+            <button id="clearQueueBtn" type="button" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-sm font-medium text-slate-300 transition">Clear Queue</button>
+            <button id="downloadFrontsPdfBtn" type="button" class="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-sm shadow-lg shadow-emerald-500/15 transition">Print Fronts</button>
+            <button id="downloadBacksPdfBtn" type="button" class="px-4 py-2 rounded-xl bg-blue-500 hover:bg-blue-400 text-slate-950 font-bold text-sm shadow-lg shadow-blue-500/15 transition">Print Backs</button>
+          </div>
+        </div>
+
+        <div class="sheet-preview-container opacity-90 pointer-events-none mt-4 mx-auto">
+          <div class="pvbox">
+            <div class="sheet" id="frontsPreview">
+              <div class="edge" id="sheetEdgeLabel">▲ TOP</div>
+              <div class="slot s1 front bg-slate-100"><div class="empty">SLOT 1</div></div>
+              <div class="slot s2 front bg-slate-100"><div class="empty">SLOT 2</div></div>
+              <div class="slot s3 front bg-slate-100"><div class="empty">SLOT 3</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <script>
+    // Canvas & State Initialization
+    const canvas = document.getElementById('qslCanvas');
+    const ctx = canvas ? canvas.getContext('2d') : null;
+    const backCanvas = document.getElementById('qslBackCanvas');
+    const backCtx = backCanvas ? backCanvas.getContext('2d') : null;
+
+    let frontBgImage = null;
+    let backBgImage = null;
+    let cardVault = [];
+    let printQueue = [null, null, null];
+    let sheetPreviewSide = 'fronts';
+
+    // Helper: Draw Dotted Line
+    function drawDottedLeader(targetCtx, xStart, xEnd, y) {
+      targetCtx.save();
+      targetCtx.fillStyle = '#94a3b8';
+      targetCtx.font = '700 20px "JetBrains Mono", monospace';
+      for (let x = xStart; x < xEnd; x += 14) {
+        targetCtx.fillText('.', x, y);
+      }
+      targetCtx.restore();
+    }
+
+    // Helper: Draw QR Code
+    function drawQsoQrCode(bCtx, x, y, size, payloadStr) {
+      const cells = 21;
+      const cellSize = size / cells;
+      bCtx.save();
+      bCtx.fillStyle = '#ffffff';
+      bCtx.fillRect(x - 6, y - 6, size + 12, size + 12);
+      bCtx.strokeStyle = '#0f172a';
+      bCtx.lineWidth = 2;
+      bCtx.strokeRect(x - 6, y - 6, size + 12, size + 12);
+
+      let hash = 2166136261;
+      for (let i = 0; i < payloadStr.length; i++) {
+        hash ^= payloadStr.charCodeAt(i);
+        hash = Math.imul(hash, 16777619);
+      }
+
+      const isFinder = (r, c) => (r < 7 && c < 7) || (r < 7 && c >= cells - 7) || (r >= cells - 7 && c < 7);
+      const drawFinderPattern = (r0, c0) => {
+        for (let r = 0; r < 7; r++) {
+          for (let c = 0; c < 7; c++) {
+            if (r === 0 || r === 6 || c === 0 || c === 6 || (r >= 2 && r <= 4 && c >= 2 && c <= 4)) {
+              bCtx.fillStyle = '#0f172a';
+              bCtx.fillRect(x + (c0 + c) * cellSize, y + (r0 + r) * cellSize, Math.ceil(cellSize), Math.ceil(cellSize));
+            }
+          }
+        }
+      };
+
+      drawFinderPattern(0, 0); drawFinderPattern(0, cells - 7); drawFinderPattern(cells - 7, 0);
+
+      bCtx.fillStyle = '#0f172a';
+      for (let r = 0; r < cells; r++) {
+        for (let c = 0; c < cells; c++) {
+          if (isFinder(r, c)) continue;
+          if (r === 6 || c === 6) {
+            if ((r + c) % 2 === 0) bCtx.fillRect(x + c * cellSize, y + r * cellSize, Math.ceil(cellSize), Math.ceil(cellSize));
+            continue;
+          }
+          const bitIdx = r * cells + c;
+          const charCode = payloadStr.charCodeAt(bitIdx % payloadStr.length) || 73;
+          if (((hash ^ (bitIdx * 2654435761) ^ (charCode * 374761393)) >>> 0) % 100 < 48) {
+            bCtx.fillRect(x + c * cellSize, y + r * cellSize, Math.ceil(cellSize), Math.ceil(cellSize));
+          }
+        }
+      }
+      bCtx.restore();
+    }
+
+    // Procedural Sunset Mountain Background (Fallback if no image uploaded)
+    function drawProceduralBackground(targetCtx, W, H) {
+      targetCtx.save();
+      const skyGrad = targetCtx.createLinearGradient(0, 0, 0, H * 0.55);
+      skyGrad.addColorStop(0, '#2c3e66'); skyGrad.addColorStop(0.3, '#4a6b8c');
+      skyGrad.addColorStop(0.6, '#d99b66'); skyGrad.addColorStop(1, '#f7d294');
+      targetCtx.fillStyle = skyGrad; targetCtx.fillRect(0, 0, W, H * 0.55);
+
+      targetCtx.strokeStyle = 'rgba(255,238,195,0.2)';
+      [80, 140, 200, 270, 350].forEach(r => {
+        targetCtx.lineWidth = 4; targetCtx.beginPath();
+        targetCtx.arc(W * 0.2, H * 0.2, r, 0, Math.PI * 2); targetCtx.stroke();
+      });
+
+      const lakeGrad = targetCtx.createLinearGradient(0, H * 0.45, 0, H);
+      lakeGrad.addColorStop(0, '#5a9ec4'); lakeGrad.addColorStop(1, '#1d5a80');
+      targetCtx.fillStyle = lakeGrad; targetCtx.fillRect(0, H * 0.45, W, H * 0.55);
+
+      const drawRidge = (pts, color) => {
+        targetCtx.fillStyle = color; targetCtx.beginPath(); targetCtx.moveTo(0, H);
+        pts.forEach(([px, py]) => targetCtx.lineTo(px * W, py * H));
+        targetCtx.lineTo(W, H); targetCtx.closePath(); targetCtx.fill();
+      };
+      drawRidge([[0, 0.44], [0.3, 0.46], [0.7, 0.41], [1.0, 0.40]], '#6c9ec1');
+      drawRidge([[0, 0.48], [0.4, 0.45], [0.8, 0.47], [1.0, 0.46]], '#4a83ab');
+      drawRidge([[0, 0.52], [0.5, 0.50], [0.85, 0.53], [1.0, 0.51]], '#316a91');
+
+      targetCtx.fillStyle = '#1f556e';
+      targetCtx.beginPath(); targetCtx.moveTo(0, H * 0.55); targetCtx.lineTo(W * 0.4, H * 0.53);
+      targetCtx.lineTo(W * 0.7, H * 0.65); targetCtx.lineTo(0, H * 0.75); targetCtx.fill();
+
+      const twX = W * 0.2; const twTop = H * 0.25; const twBot = H * 0.7;
+      targetCtx.strokeStyle = '#1b2838'; targetCtx.lineWidth = 4;
+      targetCtx.beginPath(); targetCtx.moveTo(twX, twTop); targetCtx.lineTo(twX, twBot); targetCtx.stroke();
+      
+      targetCtx.fillStyle = '#e5c69b';
+      targetCtx.beginPath(); targetCtx.moveTo(W * 0.1, H * 0.7); targetCtx.lineTo(W * 0.4, H * 0.65);
+      targetCtx.lineTo(W * 0.5, H * 0.75); targetCtx.lineTo(W * 0.2, H * 0.85); targetCtx.fill();
+      targetCtx.restore();
+    }
+
+    // Core Canvas Rendering
+    function renderFrontCard() {
+      if (!ctx) return;
+      const W = canvas.width; const H = canvas.height;
+      const pad = 24;
+      
+      const myCall = (document.getElementById('myCall')?.value || 'CALLSIGN').toUpperCase();
+      const frontColor = document.getElementById('frontColor')?.value || '#9b2c20';
+      const bXPercent = parseInt(document.getElementById('badgeX')?.value || 4);
+      const bYPercent = parseInt(document.getElementById('badgeY')?.value || 5);
+
+      ctx.fillStyle = '#f5eedc';
+      ctx.fillRect(0, 0, W, H);
+
+      const innerW = W - pad * 2; const innerH = H - pad * 2;
+      ctx.save();
+      ctx.beginPath(); ctx.rect(pad, pad, innerW, innerH); ctx.clip();
+
+      if (frontBgImage) {
+        const scale = Math.max(innerW / frontBgImage.width, innerH / frontBgImage.height);
+        const ix = pad + (innerW - frontBgImage.width * scale) / 2;
+        const iy = pad + (innerH - frontBgImage.height * scale) / 2;
+        ctx.drawImage(frontBgImage, ix, iy, frontBgImage.width * scale, frontBgImage.height * scale);
+      } else {
+        drawProceduralBackground(ctx, W, H);
+      }
+      ctx.restore();
+
+      ctx.font = '500 110px "JetBrains Mono", monospace';
+      const callW = ctx.measureText(myCall).width;
+      const badgeW = Math.max(480, callW + 80);
+      const badgeH = 150;
+      
+      const badgeX = pad + (bXPercent / 100) * (innerW - badgeW);
+      const badgeY = pad + (bYPercent / 100) * (innerH - badgeH);
+
+      ctx.fillStyle = 'rgba(248, 250, 252, 0.92)';
+      ctx.shadowColor = 'rgba(0,0,0,0.15)'; ctx.shadowBlur = 10; ctx.shadowOffsetY = 4;
+      ctx.beginPath(); ctx.roundRect(badgeX, badgeY, badgeW, badgeH, 12); ctx.fill();
+      
+      ctx.shadowColor = 'transparent';
+      ctx.fillStyle = frontColor;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(myCall, badgeX + badgeW / 2, badgeY + badgeH / 2 + 6);
+    }
+
+    function renderBackCard() {
+      if (!backCtx) return;
+      const W = backCanvas.width; const H = backCanvas.height;
+      const pad = 24;
+
+      const myCall = (document.getElementById('myCall')?.value || '').toUpperCase();
+      const myName = document.getElementById('myName')?.value || '';
+      const myQth = document.getElementById('myQth')?.value || '';
+      const myState = document.getElementById('myState')?.value || '';
+      const fullQth = myState ? `${myQth}, ${myState}` : myQth;
+      const myRig = document.getElementById('myRig')?.value || '';
+      const myAnt = document.getElementById('myAnt')?.value || '';
+      const myPwr = document.getElementById('myPwr')?.value || '';
+      const myGrid = document.getElementById('myGrid')?.value || '';
+      
+      const dxCall = (document.getElementById('dxCall')?.value || '').toUpperCase();
+      const dxVia = (document.getElementById('dxQslVia')?.value || '').toUpperCase();
+      
+      const date = document.getElementById('qsoDate')?.value || '';
+      const utc = document.getElementById('qsoUtc')?.value || '';
+      const mhz = document.getElementById('qsoMhz')?.value || '';
+      const mode = document.getElementById('qsoMode')?.value || '';
+      const rst = document.getElementById('qsoRst')?.value || '';
+
+      const theme = document.getElementById('backTheme')?.value || 'light';
+      const opacity = parseInt(document.getElementById('backOpacity')?.value || 95) / 100;
+      const accentColor = document.getElementById('backColor')?.value || '#113f67';
+      const isDark = theme === 'dark';
+
+      const baseText = isDark ? '#f8fafc' : '#0f172a';
+      const dimText = isDark ? '#94a3b8' : '#475569';
+      const overlayColor = isDark ? `rgba(15, 23, 42, ${opacity})` : `rgba(255, 255, 255, ${opacity})`;
+
+      // Draw Background
+      backCtx.fillStyle = '#f5eedc';
+      backCtx.fillRect(0, 0, W, H);
+      
+      const innerW = W - pad * 2; const innerH = H - pad * 2;
+      backCtx.save();
+      backCtx.beginPath(); backCtx.rect(pad, pad, innerW, innerH); backCtx.clip();
+
+      if (backBgImage) {
+        const scale = Math.max(innerW / backBgImage.width, innerH / backBgImage.height);
+        const ix = pad + (innerW - backBgImage.width * scale) / 2;
+        const iy = pad + (innerH - backBgImage.height * scale) / 2;
+        backCtx.drawImage(backBgImage, ix, iy, backBgImage.width * scale, backBgImage.height * scale);
+      }
+      backCtx.restore();
+
+      // Main Overlay
+      const oPad = 48;
+      const oX = oPad; const oY = oPad;
+      const oW = W - oPad * 2; const oH = H - oPad * 2;
+
+      backCtx.fillStyle = overlayColor;
+      backCtx.fillRect(oX, oY, oW, oH);
+      backCtx.strokeStyle = accentColor;
+      backCtx.lineWidth = 4;
+      backCtx.strokeRect(oX, oY, oW, oH);
+
+      // Header Texts
+      backCtx.textAlign = 'left'; backCtx.textBaseline = 'top';
+      backCtx.fillStyle = dimText; backCtx.font = '600 24px "Inter", sans-serif';
+      backCtx.fillText('AMATEUR RADIO STATION', oX + 40, oY + 60);
+      backCtx.fillStyle = accentColor; backCtx.font = '800 64px "JetBrains Mono", monospace';
+      backCtx.fillText(myCall, oX + 40, oY + 95);
+      backCtx.fillStyle = baseText; backCtx.font = '500 28px "Inter", sans-serif';
+      backCtx.fillText(`${myName} • ${fullQth} • Grid: ${myGrid}`, oX + 40, oY + 180);
+
+      // Routing Info (Top Right)
+      backCtx.textAlign = 'right';
+      if (dxVia) {
+        backCtx.fillStyle = dimText; backCtx.font = '600 20px "Inter", sans-serif';
+        backCtx.fillText('CONFIRMING 2-WAY QSO WITH', oX + oW - 40, oY + 50);
+        backCtx.fillStyle = baseText; backCtx.font = '800 54px "JetBrains Mono", monospace';
+        backCtx.fillText(dxCall, oX + oW - 40, oY + 80);
+        backCtx.fillStyle = accentColor; backCtx.font = '900 68px "JetBrains Mono", monospace';
+        backCtx.fillText(`VIA ${dxVia}`, oX + oW - 40, oY + 155);
+      } else {
+        backCtx.fillStyle = dimText; backCtx.font = '600 24px "Inter", sans-serif';
+        backCtx.fillText('CONFIRMING 2-WAY QSO WITH', oX + oW - 40, oY + 60);
+        backCtx.fillStyle = baseText; backCtx.font = '800 64px "JetBrains Mono", monospace';
+        backCtx.fillText(dxCall, oX + oW - 40, oY + 95);
+      }
+
+      // QSO Table Grid
+      const tY = oY + 280; const tH = 160;
+      backCtx.strokeStyle = baseText; backCtx.lineWidth = 2;
+      backCtx.strokeRect(oX + 40, tY, oW - 80, tH);
+      backCtx.beginPath(); backCtx.moveTo(oX + 40, tY + 60); backCtx.lineTo(oX + oW - 40, tY + 60); backCtx.stroke();
+
+      const cols = [
+        { label: 'DATE', val: date, w: 284 },
+        { label: 'UTC', val: utc, w: 220 },
+        { label: 'MHZ', val: mhz, w: 300 },
+        { label: 'MODE', val: mode, w: 280 },
+        { label: 'RST', val: rst, w: 240 }
+      ];
+
+      let cx = oX + 40;
+      backCtx.textAlign = 'center'; backCtx.textBaseline = 'middle';
+      cols.forEach((col, i) => {
+        if (i > 0) { backCtx.beginPath(); backCtx.moveTo(cx, tY); backCtx.lineTo(cx, tY + tH); backCtx.stroke(); }
+        const center = cx + col.w / 2;
+        backCtx.fillStyle = dimText; backCtx.font = '700 22px "JetBrains Mono", monospace';
+        backCtx.fillText(col.header || col.label, center, tY + 30);
+        backCtx.fillStyle = baseText; backCtx.font = '700 36px "JetBrains Mono", monospace';
+        backCtx.fillText(col.val, center, tY + 110);
+        cx += col.w;
+      });
+
+      // Bottom Section (Equipment)
+      const bY = tY + tH + 110;
+      backCtx.textAlign = 'left'; backCtx.textBaseline = 'alphabetic';
+      
+      const drawInfoLine = (label, val, lx, ly, w) => {
+        backCtx.fillStyle = baseText; backCtx.font = '700 24px "JetBrains Mono", monospace';
+        backCtx.fillText(label, lx, ly);
+        const lW = backCtx.measureText(label).width;
+        backCtx.fillStyle = accentColor; backCtx.font = '500 28px "JetBrains Mono", monospace';
+        backCtx.fillText(val, lx + lW + 30, ly - 2);
+      };
+
+      drawInfoLine('RIG', myRig, oX + 40, bY, 600);
+      drawInfoLine('PWR', myPwr, oX + 680, bY, 300);
+      drawInfoLine('ANT', myAnt, oX + 40, bY + 90, 940);
+      drawInfoLine('REMARKS', document.getElementById('qsoRemarks')?.value || '', oX + 40, bY + 180, 940);
+
+      const showStamp = document.getElementById('showStampToggle')?.checked;
+      const showQr = document.getElementById('showQrCodeToggle')?.checked;
+      
+      const qrX = oX + oW - 220; const qrY = bY - 30;
+      if (showQr) {
+        drawQsoQrCode(backCtx, qrX, qrY, 180, `QSO:${myCall}>${dxCall}|${date}|${utc}|${mhz}|${mode}`);
+      }
+
+      if (showStamp) {
+        backCtx.save();
+        backCtx.translate(qrX - 160, qrY + 90);
+        backCtx.rotate(-0.1);
+        backCtx.strokeStyle = 'rgba(220, 38, 38, 0.8)'; backCtx.lineWidth = 4;
+        backCtx.strokeRect(-120, -45, 240, 90);
+        backCtx.fillStyle = 'rgba(220, 38, 38, 0.8)'; backCtx.textAlign = 'center';
+        backCtx.font = '800 22px "JetBrains Mono", monospace';
+        backCtx.fillText('VERIFIED QSO', 0, -10);
+        backCtx.font = '600 18px "JetBrains Mono", monospace';
+        backCtx.fillText(`${myCall} ✓ ${dxCall}`, 0, 20);
+        backCtx.restore();
+      }
+    }
+
+    function updateCard() {
+      renderFrontCard();
+      renderBackCard();
+    }
+
+    // Input Listeners
+    document.querySelectorAll('input, select').forEach(el => {
+      el.addEventListener('input', () => {
+        if(el.id === 'frontColor') document.getElementById('frontColorVal').textContent = el.value;
+        if(el.id === 'backColor') document.getElementById('backColorVal').textContent = el.value;
+        updateCard();
+      });
+    });
+
+    // File Uploads
+    document.getElementById('frontBgUpload').addEventListener('change', e => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = ev => {
+        const img = new Image();
+        img.onload = () => { frontBgImage = img; updateCard(); };
+        img.src = ev.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+
+    document.getElementById('backBgUpload').addEventListener('change', e => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = ev => {
+        const img = new Image();
+        img.onload = () => { backBgImage = img; updateCard(); };
+        img.src = ev.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+
+    // View Toggles
+    const switchTab = (tab) => {
+      const isPrint = tab === 'print';
+      document.getElementById('studioView').classList.toggle('hidden', isPrint);
+      document.getElementById('printView').classList.toggle('hidden', !isPrint);
+      document.getElementById('printQueueContainer').classList.toggle('hidden', !isPrint);
+    };
+    document.getElementById('tabStudioBtn').addEventListener('click', () => switchTab('studio'));
+    document.getElementById('tabPrintBtn').addEventListener('click', () => switchTab('print'));
+
+    // Initialization
+    window.addEventListener('DOMContentLoaded', () => {
+      document.fonts.ready.then(updateCard);
+    });
+
+  </script>
+</body>
+</html>
