@@ -1,0 +1,1386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Digital QSL Card Studio & Print Manager</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+    .font-qsl { font-family: 'JetBrains Mono', monospace; }
+    
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #0f172a; }
+    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+    .sheet-preview-container {
+      width: 100%;
+      max-width: 400px;
+      margin: 0 auto;
+      background: #0f172a;
+      border-radius: 12px;
+      padding: 16px;
+    }
+    .pvbox {
+      position: relative;
+      width: 100%;
+      padding-top: 129.4%;
+      background: #fff;
+      border-radius: 4px;
+      overflow: hidden;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+    }
+    .sheet { position: absolute; top: 0; left: 0; right: 0; bottom: 0; }
+    .slot {
+      position: absolute; left: 17.6%; width: 64.7%; height: 31.8%;
+      background: #e2e8f0; border: 1px dashed #94a3b8;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 10px; font-weight: bold; color: #64748b; overflow: hidden;
+    }
+    .slot img { width: 100%; height: 100%; object-fit: cover; }
+    .sheet.fit-contain .slot img { object-fit: contain; background: #fff; }
+    .slot.s1 { top: 2.27%; }
+    .slot.s2 { top: 34.09%; }
+    .slot.s3 { top: 65.90%; }
+    .mark { position: absolute; background: #ef4444; }
+    .mark.h { width: 5.8%; height: 1px; }
+    .mark.v { width: 1px; height: 1.36%; }
+    .sheet.no-marks .mark { display: none; }
+    .edge { position: absolute; top: 2px; left: 50%; transform: translateX(-50%); font-size: 8px; font-weight: bold; color: #ef4444; text-align: center; line-height: 1;}
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen">
+  
+  <!-- Top Navigation -->
+  <nav class="sticky top-0 z-50 bg-slate-900/95 backdrop-blur border-b border-slate-800 px-6 py-3 shadow-lg">
+    <div class="max-w-[1600px] mx-auto flex flex-wrap items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <div class="w-8 h-8 rounded bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center font-bold text-slate-950 shadow-lg shadow-amber-500/20">73</div>
+        <div>
+          <h1 class="text-lg font-bold tracking-tight text-white leading-tight">Digital QSL Studio <span class="text-amber-500">&</span> Print Mgr</h1>
+          <p class="text-[10px] font-medium text-slate-400 uppercase tracking-widest">Pixel-Perfect • 2-Sided • Full Control</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-3">
+        <button id="getChromeExtBtn" class="px-3 py-1.5 rounded-lg text-[11px] font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30 hover:bg-purple-500/40 transition">📦 Get QRZ Chrome Ext.</button>
+        <div class="flex items-center gap-2 bg-slate-950 p-1 rounded-lg border border-slate-800">
+          <button id="tabStudioBtn" class="px-3.5 py-1.5 rounded-lg text-xs font-bold bg-amber-500 text-slate-950 shadow transition">1. Card Studio</button>
+          <button id="tabPrintBtn" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold text-slate-300 hover:text-white transition flex items-center gap-1.5">
+            <span>2. Print Sheets</span>
+            <span id="printQueueBadge" class="bg-blue-500 text-slate-950 px-1.5 py-0.5 rounded text-[9px] font-bold">0/3</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Global Toast Notifications -->
+  <div id="toastContainer" class="fixed bottom-6 right-6 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- MAIN APP CONTAINER -->
+  <main class="max-w-[1600px] mx-auto p-4 sm:p-6 grid grid-cols-1 xl:grid-cols-12 gap-6">
+    
+    <!-- LEFT COLUMN: Data Entry & Controls -->
+    <div class="xl:col-span-5 space-y-6">
+      
+      <!-- TAB 1: STUDIO CONTROLS -->
+      <div id="studioView" class="space-y-6">
+        
+        <!-- SECTION 1: Station Profiles -->
+        <section class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-lg space-y-4">
+          <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+            <div class="flex items-center gap-2">
+              <span class="w-5 h-5 rounded-full bg-blue-500/20 text-blue-400 text-xs font-bold flex items-center justify-center">1</span>
+              <h2 class="text-sm font-bold uppercase tracking-wider text-slate-200">My Stations</h2>
+            </div>
+            <div class="flex items-center gap-2">
+              <button id="addStationBtn" type="button" class="px-2 py-1 rounded bg-amber-500/20 text-amber-400 hover:bg-amber-500/30 text-[10px] font-bold uppercase transition">+ Add</button>
+              <button id="deleteStationBtn" type="button" class="px-2 py-1 rounded bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 text-[10px] font-bold uppercase transition">Delete</button>
+            </div>
+          </div>
+          
+          <div id="stationCardsContainer" class="grid grid-cols-2 gap-2"></div>
+
+          <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-2">
+            <div class="col-span-2 sm:col-span-1">
+              <label class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">My Callsign</label>
+              <div class="flex items-center gap-1">
+                <input id="myCall" type="text" value="KR40DA" class="w-full bg-slate-950 border border-slate-700 focus:border-amber-500 focus:outline-none rounded-lg px-3 py-2 text-sm font-bold font-qsl uppercase text-white">
+              </div>
+            </div>
+            <div class="col-span-2">
+              <label class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Operator Name</label>
+              <input id="myName" type="text" value="Pranav Sharma" class="w-full bg-slate-950 border border-slate-700 focus:border-amber-500 focus:outline-none rounded-lg px-3 py-2 text-sm font-qsl text-white">
+            </div>
+            <div class="col-span-2 sm:col-span-1">
+              <label class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Rig</label>
+              <input id="myRig" type="text" value="IC-7300MK2" class="w-full bg-slate-950 border border-slate-700 focus:border-amber-500 focus:outline-none rounded-lg px-3 py-2 text-sm font-qsl text-white">
+            </div>
+            <div class="col-span-2 sm:col-span-1">
+              <label class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Power</label>
+              <input id="myPwr" type="text" value="100 W" class="w-full bg-slate-950 border border-slate-700 focus:border-amber-500 focus:outline-none rounded-lg px-3 py-2 text-sm font-qsl text-white">
+            </div>
+            <div class="col-span-2 sm:col-span-1">
+              <label class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">My Grid</label>
+              <input id="myGrid" type="text" value="FN30" class="w-full bg-slate-950 border border-slate-700 focus:border-amber-500 focus:outline-none rounded-lg px-3 py-2 text-sm font-qsl uppercase text-white">
+            </div>
+            <div class="col-span-2 sm:col-span-3">
+              <label class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Antenna</label>
+              <input id="myAnt" type="text" value="GXP Yagi antennas" class="w-full bg-slate-950 border border-slate-700 focus:border-amber-500 focus:outline-none rounded-lg px-3 py-2 text-sm font-qsl text-white">
+            </div>
+            <div class="col-span-2 sm:col-span-1">
+              <label class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">City / QTH</label>
+              <input id="myQth" type="text" value="New York" class="w-full bg-slate-950 border border-slate-700 focus:border-amber-500 focus:outline-none rounded-lg px-3 py-2 text-sm font-qsl text-white">
+            </div>
+            <div>
+              <div class="flex items-center justify-between mb-1">
+                <label class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">State/Prov</label>
+              </div>
+              <input id="myState" type="text" value="NY" class="w-full bg-slate-950 border border-slate-700 focus:border-amber-500 focus:outline-none rounded-lg px-3 py-2 text-sm font-qsl uppercase text-white">
+            </div>
+            <div>
+              <label class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">County</label>
+              <input id="myCounty" type="text" value="New York" class="w-full bg-slate-950 border border-slate-700 focus:border-amber-500 focus:outline-none rounded-lg px-3 py-2 text-sm font-qsl text-white">
+            </div>
+            <div class="col-span-2">
+              <label class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">CQ / ITU Zones</label>
+              <input id="myZones" type="text" value="CQ 05 / ITU 08" class="w-full bg-slate-950 border border-slate-700 focus:border-amber-500 focus:outline-none rounded-lg px-3 py-2 text-sm font-qsl text-white">
+            </div>
+            <div class="col-span-2 sm:col-span-1">
+              <label class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">My QSL Route</label>
+              <input id="myQslMgr" type="text" value="DIRECT / LOTW" class="w-full bg-slate-950 border border-slate-700 focus:border-amber-500 focus:outline-none rounded-lg px-3 py-2 text-sm font-qsl uppercase text-white">
+            </div>
+          </div>
+        </section>
+
+        <!-- SECTION 2: QSO Details & QSL Manager Routing -->
+        <section class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-lg space-y-4">
+          <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+            <div class="flex items-center gap-2">
+              <span class="w-5 h-5 rounded-full bg-amber-500/20 text-amber-400 text-xs font-bold flex items-center justify-center">2</span>
+              <h2 class="text-sm font-bold uppercase tracking-wider text-slate-200">QSO & Routing</h2>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <button id="loadEa5Btn" type="button" class="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 text-[10px] font-bold uppercase transition">Load EA5HPF</button>
+              <button id="loadHh2Btn" type="button" class="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 text-[10px] font-bold uppercase transition">Load HH2JR</button>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <div class="col-span-2 sm:col-span-1">
+              <label class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">DX Call</label>
+              <input id="dxCall" type="text" value="EA5HPF" class="w-full bg-slate-950 border border-slate-700 focus:border-amber-500 focus:outline-none rounded-lg px-3 py-2 text-sm font-qsl uppercase text-white">
+            </div>
+            <div>
+              <label class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Date</label>
+              <input id="qsoDate" type="text" value="2026-10-10" class="w-full bg-slate-950 border border-slate-700 focus:border-amber-500 focus:outline-none rounded-lg px-3 py-2 text-sm font-qsl text-white">
+            </div>
+            <div>
+              <label class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">UTC</label>
+              <input id="qsoUtc" type="text" value="14:54" class="w-full bg-slate-950 border border-slate-700 focus:border-amber-500 focus:outline-none rounded-lg px-3 py-2 text-sm font-qsl text-white">
+            </div>
+            <div>
+              <label class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">MHz</label>
+              <input id="qsoMhz" type="text" value="28.074" class="w-full bg-slate-950 border border-slate-700 focus:border-amber-500 focus:outline-none rounded-lg px-3 py-2 text-sm font-qsl text-white">
+            </div>
+            <div>
+              <label class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Mode</label>
+              <input id="qsoMode" type="text" value="FT8" class="w-full bg-slate-950 border border-slate-700 focus:border-amber-500 focus:outline-none rounded-lg px-3 py-2 text-sm font-qsl uppercase text-white">
+            </div>
+            <div>
+              <label class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">RST</label>
+              <input id="qsoRst" type="text" value="59" class="w-full bg-slate-950 border border-slate-700 focus:border-amber-500 focus:outline-none rounded-lg px-3 py-2 text-sm font-qsl text-white">
+            </div>
+            <div>
+              <label class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">QSL Action</label>
+              <input id="qslAction" type="text" value="PSE QSL" class="w-full bg-slate-950 border border-slate-700 focus:border-amber-500 focus:outline-none rounded-lg px-3 py-2 text-sm font-qsl text-white">
+            </div>
+            <div>
+              <label class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">DX Grid</label>
+              <input id="dxGrid" type="text" value="IM99" class="w-full bg-slate-950 border border-slate-700 focus:border-amber-500 focus:outline-none rounded-lg px-3 py-2 text-sm font-qsl uppercase text-white">
+            </div>
+            <div>
+              <label class="block text-[11px] font-semibold uppercase tracking-wider text-amber-500 mb-1">Manager Call (VIA)</label>
+              <input id="dxQslVia" type="text" value="KD4HOA" placeholder="e.g. EA5KB" class="w-full bg-slate-950 border border-amber-500/50 focus:border-amber-500 focus:outline-none rounded-lg px-3 py-2 text-sm font-qsl uppercase text-white">
+            </div>
+            <div class="col-span-2">
+              <label class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Remarks</label>
+              <input id="qsoRemarks" type="text" value="Thank you for the QSO! 73" class="w-full bg-slate-950 border border-slate-700 focus:border-amber-500 focus:outline-none rounded-lg px-3 py-2 text-sm font-qsl text-white">
+            </div>
+          </div>
+        </section>
+
+        <!-- SECTION 3: Full Control Artwork & Layout -->
+        <section class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-lg space-y-4">
+          <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+            <div class="flex items-center gap-2">
+              <span class="w-5 h-5 rounded-full bg-purple-500/20 text-purple-400 text-xs font-bold flex items-center justify-center">3</span>
+              <h2 class="text-sm font-bold uppercase tracking-wider text-slate-200">Full Control: Artwork & Layout</h2>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <!-- Front Controls -->
+            <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 space-y-3">
+              <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+                <h3 class="text-xs font-bold text-purple-400 uppercase tracking-widest">Front Side</h3>
+                <button id="resetFrontBgBtn" type="button" class="text-[10px] font-semibold text-slate-400 hover:text-rose-400 transition">Reset Bg</button>
+              </div>
+              <div>
+                <label class="block text-[10px] font-semibold uppercase text-slate-400 mb-1">Custom Front Background</label>
+                <input id="frontBgUpload" type="file" accept="image/*" class="w-full text-xs text-slate-300 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-purple-500/20 file:text-purple-300 hover:file:bg-purple-500/30 cursor-pointer">
+              </div>
+              <div class="flex items-center justify-between gap-2">
+                <div class="w-full">
+                  <label class="block text-[10px] font-semibold uppercase text-slate-400 mb-1">Badge X Pos</label>
+                  <input id="badgeX" type="range" min="0" max="100" value="4" class="w-full accent-purple-500">
+                </div>
+                <div class="w-full">
+                  <label class="block text-[10px] font-semibold uppercase text-slate-400 mb-1">Badge Y Pos</label>
+                  <input id="badgeY" type="range" min="0" max="100" value="5" class="w-full accent-purple-500">
+                </div>
+              </div>
+              <div>
+                <label class="block text-[10px] font-semibold uppercase text-slate-400 mb-1">Front Accent Color</label>
+                <div class="flex items-center gap-2">
+                  <input id="frontColor" type="color" value="#9b2c20" class="w-8 h-8 rounded cursor-pointer bg-transparent border-0 p-0">
+                  <span class="text-xs text-slate-400 font-qsl" id="frontColorVal">#9b2c20</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Back Controls -->
+            <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 space-y-3">
+              <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+                <h3 class="text-xs font-bold text-emerald-400 uppercase tracking-widest">Back Side</h3>
+                <button id="resetBackBgBtn" type="button" class="text-[10px] font-semibold text-slate-400 hover:text-rose-400 transition">Reset Bg</button>
+              </div>
+              <div>
+                <label class="block text-[10px] font-semibold uppercase text-slate-400 mb-1">Custom Back Background</label>
+                <input id="backBgUpload" type="file" accept="image/*" class="w-full text-xs text-slate-300 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-emerald-500/20 file:text-emerald-300 hover:file:bg-emerald-500/30 cursor-pointer">
+              </div>
+              <div class="flex items-center justify-between gap-2">
+                <div class="w-full">
+                  <label class="block text-[10px] font-semibold uppercase text-slate-400 mb-1">Overlay Theme</label>
+                  <select id="backTheme" class="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-white">
+                    <option value="light" selected>Light Mode</option>
+                    <option value="dark">Dark Mode</option>
+                  </select>
+                </div>
+                <div class="w-full">
+                  <label class="block text-[10px] font-semibold uppercase text-slate-400 mb-1">Overlay Opacity</label>
+                  <input id="backOpacity" type="range" min="0" max="100" value="95" class="w-full accent-emerald-500">
+                </div>
+              </div>
+              <div>
+                <label class="block text-[10px] font-semibold uppercase text-slate-400 mb-1">Back Accent Color</label>
+                <div class="flex items-center gap-2">
+                  <input id="backColor" type="color" value="#113f67" class="w-8 h-8 rounded cursor-pointer bg-transparent border-0 p-0">
+                  <span class="text-xs text-slate-400 font-qsl" id="backColorVal">#113f67</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="flex items-center gap-4 pt-3 border-t border-slate-800">
+            <label class="flex items-center gap-2 text-sm cursor-pointer hover:opacity-80 transition">
+              <input id="showQrCodeToggle" type="checkbox" class="rounded bg-slate-900 border-slate-600 text-purple-500 focus:ring-0 w-4 h-4">
+              <span class="font-semibold text-slate-200">Show QR Code</span>
+            </label>
+            <label class="flex items-center gap-2 text-sm cursor-pointer hover:opacity-80 transition">
+              <input id="showStampToggle" type="checkbox" class="rounded bg-slate-900 border-slate-600 text-purple-500 focus:ring-0 w-4 h-4">
+              <span class="font-semibold text-slate-200">Show Verified Stamp</span>
+            </label>
+          </div>
+        </section>
+      </div>
+
+      <!-- TAB 2: PRINT QUEUE VIEW -->
+      <div id="printView" class="hidden space-y-6">
+        <section class="bg-slate-900 border border-blue-500/30 rounded-2xl p-5 shadow-lg space-y-3">
+          <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+            <div class="flex items-center gap-2">
+              <span class="w-5 h-5 rounded-full bg-blue-500/20 text-blue-400 text-xs font-bold flex items-center justify-center">V</span>
+              <h2 class="text-sm font-bold uppercase tracking-wider text-slate-200">Saved Cards Vault</h2>
+              <span id="vaultCountBadge" class="bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded text-[10px] font-bold">0</span>
+            </div>
+            <button id="clearVaultBtn" type="button" class="px-2 py-1 rounded bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 text-[10px] font-bold uppercase transition">Clear Vault</button>
+          </div>
+          <div id="vaultGrid" class="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-96 overflow-y-auto pr-1"></div>
+        </section>
+      </div>
+    </div>
+
+    <!-- RIGHT COLUMN: Sticky Preview & Export -->
+    <div class="xl:col-span-7 space-y-6">
+      
+      <div class="sticky top-20 bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-2xl space-y-4">
+        
+        <div class="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h3 class="text-sm font-bold text-slate-200 uppercase tracking-wider flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              Live Canvas Preview
+            </h3>
+            <p class="text-[10px] text-slate-400 mt-0.5">Exact 1500 × 965 px standard postcard scale</p>
+          </div>
+        </div>
+
+        <div class="space-y-4 max-h-[70vh] overflow-y-auto pr-2 custom-scrollbar">
+          <div id="frontPreviewWrapper" class="relative">
+            <span class="absolute top-2 right-2 bg-slate-900/80 text-white text-[10px] font-bold px-2 py-1 rounded backdrop-blur z-10">FRONT</span>
+            <canvas id="qslCanvas" width="1500" height="965" class="w-full rounded-lg shadow-xl border border-slate-700"></canvas>
+          </div>
+          <div id="backPreviewWrapper" class="relative">
+            <span class="absolute top-2 right-2 bg-slate-900/80 text-white text-[10px] font-bold px-2 py-1 rounded backdrop-blur z-10">BACK</span>
+            <canvas id="qslBackCanvas" width="1500" height="965" class="w-full rounded-lg shadow-xl border border-slate-700"></canvas>
+          </div>
+        </div>
+
+        <div class="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-800">
+          <div class="flex gap-2">
+            <button id="downloadFrontJpgBtn" type="button" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-semibold text-slate-300 transition">↓ Front JPG</button>
+            <button id="downloadBackJpgBtn" type="button" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-semibold text-slate-300 transition">↓ Back JPG</button>
+          </div>
+          <div class="flex gap-2">
+            <button id="saveToVaultBtn" type="button" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-sm font-medium text-amber-400 transition">+ Save to Vault</button>
+            <button id="sendToPrintQueueBtn" type="button" class="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-sm shadow-lg shadow-amber-500/20 transition">Send to Print Queue ↗</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3-UP Print Sheet Preview -->
+      <div id="printQueueContainer" class="hidden bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-2xl space-y-4">
+        <h3 class="text-sm font-bold text-slate-200 uppercase tracking-wider flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full bg-blue-400 animate-pulse"></span>
+          3-Up Print Sheet Queue (8.5" × 11")
+        </h3>
+        <div id="queueSlotsGrid" class="grid grid-cols-1 sm:grid-cols-3 gap-3"></div>
+        
+        <div class="flex flex-wrap items-center justify-between gap-4 bg-slate-950 p-4 rounded-xl border border-slate-800 mt-4">
+          <div class="flex flex-wrap items-center gap-4">
+            <label class="flex items-center gap-2 text-sm text-slate-300 cursor-pointer">
+              <input id="printFitToggle" type="checkbox" checked class="rounded bg-slate-900 border-slate-700 text-emerald-500 focus:ring-0">
+              <span>Fit whole image</span>
+            </label>
+            <div class="flex bg-slate-900 p-1 rounded-lg border border-slate-800">
+              <button id="sheetPreviewFrontsBtn" type="button" class="px-2.5 py-1 rounded text-xs font-bold bg-emerald-500 text-slate-950 transition">Preview Fronts</button>
+              <button id="sheetPreviewBacksBtn" type="button" class="px-2.5 py-1 rounded text-xs font-semibold text-slate-400 hover:text-white transition">Preview Backs</button>
+            </div>
+          </div>
+          <div class="flex flex-wrap items-center gap-3">
+            <button id="clearQueueBtn" type="button" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-sm font-medium text-slate-300 transition">Clear Queue</button>
+            <button id="downloadFrontsPdfBtn" type="button" class="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-sm shadow-lg shadow-emerald-500/15 transition">Print Fronts</button>
+            <button id="downloadBacksPdfBtn" type="button" class="px-4 py-2 rounded-xl bg-blue-500 hover:bg-blue-400 text-slate-950 font-bold text-sm shadow-lg shadow-blue-500/15 transition">Print Backs</button>
+          </div>
+        </div>
+
+        <div class="sheet-preview-container opacity-90 pointer-events-none mt-4 mx-auto">
+          <div class="pvbox">
+            <div class="sheet" id="frontsPreview">
+              <div class="edge" id="sheetEdgeLabel">▲ TOP (FRONTS)</div>
+              <div class="slot s1 front bg-slate-100" id="previewSlot0"><div class="empty">SLOT 1</div></div>
+              <div class="slot s2 front bg-slate-100" id="previewSlot1"><div class="empty">SLOT 2</div></div>
+              <div class="slot s3 front bg-slate-100" id="previewSlot2"><div class="empty">SLOT 3</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- QRZ Chrome Extension Modal -->
+  <div id="chromeExtModal" class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <h3 class="text-sm font-bold uppercase tracking-wider text-purple-300">📦 QRZ.com Preload Chrome Extension</h3>
+        <button id="closeExtModalBtn" type="button" class="text-slate-400 hover:text-white text-sm font-bold px-2 py-0.5 rounded">✕</button>
+      </div>
+      <p class="text-xs text-slate-300 leading-relaxed">
+        Download the extension files below into a new folder on your computer, open <code class="text-amber-400 font-qsl">chrome://extensions</code>, enable <strong>Developer mode</strong>, and click <strong>Load unpacked</strong>. It adds a 1-click <em>Send to QSL Studio</em> button on QRZ callsign pages.
+      </p>
+      <div class="flex flex-wrap gap-2 pt-2">
+        <button id="dlManifestBtn" type="button" class="px-3 py-2 rounded-lg bg-purple-500 hover:bg-purple-400 text-slate-950 text-xs font-bold transition">1. Download manifest.json</button>
+        <button id="dlContentJsBtn" type="button" class="px-3 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold transition">2. Download content.js</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Canvas & State Initialization
+    const canvas = document.getElementById('qslCanvas');
+    const ctx = canvas ? canvas.getContext('2d') : null;
+    const backCanvas = document.getElementById('qslBackCanvas');
+    const backCtx = backCanvas ? backCanvas.getContext('2d') : null;
+
+    let frontBgImage = null;
+    let backBgImage = null;
+    let cardVault = [];
+    let printQueue = [null, null, null];
+    let sheetPreviewSide = 'fronts';
+
+    // Station Profiles State
+    let stations = [
+      {
+        call: 'KR40DA',
+        name: 'Pranav Sharma',
+        rig: 'IC-7300MK2',
+        pwr: '100 W',
+        grid: 'FN30',
+        ant: 'GXP Yagi antennas',
+        qth: 'New York',
+        state: 'NY',
+        county: 'New York',
+        zones: 'CQ 05 / ITU 08',
+        qslMgr: 'DIRECT / LOTW'
+      },
+      {
+        call: 'KR40DA/P',
+        name: 'Pranav Sharma',
+        rig: 'IC-705',
+        pwr: '10 W',
+        grid: 'FN21',
+        ant: 'EFHW 40-10m Wire',
+        qth: 'Catskills POTA',
+        state: 'NY',
+        county: 'Ulster',
+        zones: 'CQ 05 / ITU 08',
+        qslMgr: 'LOTW / BURO'
+      }
+    ];
+    let activeStationIndex = 0;
+
+    // Safe Storage Wrapper
+    function safeSetStorage(key, val) {
+      try { localStorage.setItem(key, val); return true; } catch (e) { return false; }
+    }
+    function safeGetStorage(key) {
+      try { return localStorage.getItem(key); } catch (e) { return null; }
+    }
+    function safeRemoveStorage(key) {
+      try { localStorage.removeItem(key); } catch (e) { }
+    }
+
+    // Helper: Draw QR Code
+    function drawQsoQrCode(bCtx, x, y, size, payloadStr) {
+      const cells = 21;
+      const cellSize = size / cells;
+      bCtx.save();
+      bCtx.fillStyle = '#ffffff';
+      bCtx.fillRect(x - 6, y - 6, size + 12, size + 12);
+      bCtx.strokeStyle = '#0f172a';
+      bCtx.lineWidth = 2;
+      bCtx.strokeRect(x - 6, y - 6, size + 12, size + 12);
+
+      let hash = 2166136261;
+      for (let i = 0; i < payloadStr.length; i++) {
+        hash ^= payloadStr.charCodeAt(i);
+        hash = Math.imul(hash, 16777619);
+      }
+
+      const isFinder = (r, c) => (r < 7 && c < 7) || (r < 7 && c >= cells - 7) || (r >= cells - 7 && c < 7);
+      const drawFinderPattern = (r0, c0) => {
+        for (let r = 0; r < 7; r++) {
+          for (let c = 0; c < 7; c++) {
+            if (r === 0 || r === 6 || c === 0 || c === 6 || (r >= 2 && r <= 4 && c >= 2 && c <= 4)) {
+              bCtx.fillStyle = '#0f172a';
+              bCtx.fillRect(x + (c0 + c) * cellSize, y + (r0 + r) * cellSize, Math.ceil(cellSize), Math.ceil(cellSize));
+            }
+          }
+        }
+      };
+
+      drawFinderPattern(0, 0); drawFinderPattern(0, cells - 7); drawFinderPattern(cells - 7, 0);
+
+      bCtx.fillStyle = '#0f172a';
+      for (let r = 0; r < cells; r++) {
+        for (let c = 0; c < cells; c++) {
+          if (isFinder(r, c)) continue;
+          if (r === 6 || c === 6) {
+            if ((r + c) % 2 === 0) bCtx.fillRect(x + c * cellSize, y + r * cellSize, Math.ceil(cellSize), Math.ceil(cellSize));
+            continue;
+          }
+          const bitIdx = r * cells + c;
+          const charCode = payloadStr.charCodeAt(bitIdx % payloadStr.length) || 73;
+          if (((hash ^ (bitIdx * 2654435761) ^ (charCode * 374761393)) >>> 0) % 100 < 48) {
+            bCtx.fillRect(x + c * cellSize, y + r * cellSize, Math.ceil(cellSize), Math.ceil(cellSize));
+          }
+        }
+      }
+      bCtx.restore();
+    }
+
+    // Procedural Sunset Mountain Background (Fallback if no image uploaded)
+    function drawProceduralBackground(targetCtx, W, H) {
+      targetCtx.save();
+      const skyGrad = targetCtx.createLinearGradient(0, 0, 0, H * 0.55);
+      skyGrad.addColorStop(0, '#2c3e66'); skyGrad.addColorStop(0.3, '#4a6b8c');
+      skyGrad.addColorStop(0.6, '#d99b66'); skyGrad.addColorStop(1, '#f7d294');
+      targetCtx.fillStyle = skyGrad; targetCtx.fillRect(0, 0, W, H * 0.55);
+
+      targetCtx.strokeStyle = 'rgba(255,238,195,0.2)';
+      [80, 140, 200, 270, 350].forEach(r => {
+        targetCtx.lineWidth = 4; targetCtx.beginPath();
+        targetCtx.arc(W * 0.2, H * 0.2, r, 0, Math.PI * 2); targetCtx.stroke();
+      });
+
+      const lakeGrad = targetCtx.createLinearGradient(0, H * 0.45, 0, H);
+      lakeGrad.addColorStop(0, '#5a9ec4'); lakeGrad.addColorStop(1, '#1d5a80');
+      targetCtx.fillStyle = lakeGrad; targetCtx.fillRect(0, H * 0.45, W, H * 0.55);
+
+      const drawRidge = (pts, color) => {
+        targetCtx.fillStyle = color; targetCtx.beginPath(); targetCtx.moveTo(0, H);
+        pts.forEach(([px, py]) => targetCtx.lineTo(px * W, py * H));
+        targetCtx.lineTo(W, H); targetCtx.closePath(); targetCtx.fill();
+      };
+      drawRidge([[0, 0.44], [0.3, 0.46], [0.7, 0.41], [1.0, 0.40]], '#6c9ec1');
+      drawRidge([[0, 0.48], [0.4, 0.45], [0.8, 0.47], [1.0, 0.46]], '#4a83ab');
+      drawRidge([[0, 0.52], [0.5, 0.50], [0.85, 0.53], [1.0, 0.51]], '#316a91');
+
+      targetCtx.fillStyle = '#1f556e';
+      targetCtx.beginPath(); targetCtx.moveTo(0, H * 0.55); targetCtx.lineTo(W * 0.4, H * 0.53);
+      targetCtx.lineTo(W * 0.7, H * 0.65); targetCtx.lineTo(0, H * 0.75); targetCtx.fill();
+
+      // Tower & Yagi Beam
+      const twX = W * 0.2; const twTop = H * 0.22; const twBot = H * 0.72;
+      targetCtx.strokeStyle = '#1b2838'; targetCtx.lineWidth = 5;
+      targetCtx.beginPath();
+      targetCtx.moveTo(twX - 14, twBot); targetCtx.lineTo(twX - 4, twTop);
+      targetCtx.moveTo(twX + 14, twBot); targetCtx.lineTo(twX + 4, twTop);
+      targetCtx.stroke();
+      targetCtx.lineWidth = 2;
+      for (let y = twTop + 15; y < twBot; y += 22) {
+        targetCtx.beginPath();
+        targetCtx.moveTo(twX - 10, y); targetCtx.lineTo(twX + 10, y + 12);
+        targetCtx.moveTo(twX + 10, y); targetCtx.lineTo(twX - 10, y + 12);
+        targetCtx.stroke();
+      }
+      // Yagi Boom & Elements
+      targetCtx.lineWidth = 4;
+      targetCtx.beginPath(); targetCtx.moveTo(twX - 95, twTop - 20); targetCtx.lineTo(twX + 105, twTop + 25); targetCtx.stroke();
+      [-70, -25, 25, 75].forEach((offset, idx) => {
+        const ex = twX + offset;
+        const ey = twTop + offset * 0.22;
+        const halfLen = 68 - idx * 8;
+        targetCtx.beginPath();
+        targetCtx.moveTo(ex - halfLen * 0.5, ey + halfLen * 0.35);
+        targetCtx.lineTo(ex + halfLen * 0.5, ey - halfLen * 0.35);
+        targetCtx.stroke();
+      });
+
+      targetCtx.fillStyle = '#e5c69b';
+      targetCtx.beginPath(); targetCtx.moveTo(W * 0.05, H * 0.72); targetCtx.lineTo(W * 0.42, H * 0.65);
+      targetCtx.lineTo(W * 0.48, H * 0.85); targetCtx.lineTo(W * 0.05, H * 0.92); targetCtx.fill();
+      targetCtx.restore();
+    }
+
+    // Core Canvas Rendering: Front
+    function renderFrontCard() {
+      if (!ctx) return;
+      const W = canvas.width; const H = canvas.height;
+      const pad = 24;
+      
+      const myCall = (document.getElementById('myCall')?.value || 'CALLSIGN').toUpperCase();
+      const frontColor = document.getElementById('frontColor')?.value || '#9b2c20';
+      const bXPercent = parseInt(document.getElementById('badgeX')?.value || 4, 10);
+      const bYPercent = parseInt(document.getElementById('badgeY')?.value || 5, 10);
+
+      ctx.fillStyle = '#f5eedc';
+      ctx.fillRect(0, 0, W, H);
+
+      const innerW = W - pad * 2; const innerH = H - pad * 2;
+      ctx.save();
+      ctx.beginPath(); ctx.rect(pad, pad, innerW, innerH); ctx.clip();
+
+      if (frontBgImage) {
+        const scale = Math.max(innerW / frontBgImage.width, innerH / frontBgImage.height);
+        const ix = pad + (innerW - frontBgImage.width * scale) / 2;
+        const iy = pad + (innerH - frontBgImage.height * scale) / 2;
+        ctx.drawImage(frontBgImage, ix, iy, frontBgImage.width * scale, frontBgImage.height * scale);
+      } else {
+        drawProceduralBackground(ctx, W, H);
+      }
+      ctx.restore();
+
+      ctx.save();
+      ctx.font = '700 110px "JetBrains Mono", monospace';
+      const callW = ctx.measureText(myCall).width;
+      const badgeW = Math.max(480, callW + 80);
+      const badgeH = 150;
+      
+      const badgeX = pad + (bXPercent / 100) * (innerW - badgeW);
+      const badgeY = pad + (bYPercent / 100) * (innerH - badgeH);
+
+      ctx.fillStyle = 'rgba(248, 250, 252, 0.92)';
+      ctx.shadowColor = 'rgba(0,0,0,0.18)'; ctx.shadowBlur = 12; ctx.shadowOffsetY = 4;
+      ctx.beginPath(); ctx.roundRect(badgeX, badgeY, badgeW, badgeH, 12); ctx.fill();
+      
+      ctx.shadowColor = 'transparent';
+      ctx.fillStyle = frontColor;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(myCall, badgeX + badgeW / 2, badgeY + badgeH / 2 + 4);
+      ctx.restore();
+    }
+
+    // Core Canvas Rendering: Back
+    function renderBackCard() {
+      if (!backCtx) return;
+      const W = backCanvas.width; const H = backCanvas.height;
+      const pad = 24;
+
+      const myCall = (document.getElementById('myCall')?.value || '').toUpperCase();
+      const myName = document.getElementById('myName')?.value || '';
+      const myQth = document.getElementById('myQth')?.value || '';
+      const myState = (document.getElementById('myState')?.value || '').toUpperCase();
+      const myCounty = document.getElementById('myCounty')?.value || '';
+      const myZones = document.getElementById('myZones')?.value || '';
+      const myQslMgr = (document.getElementById('myQslMgr')?.value || '').toUpperCase();
+      const fullQth = myState ? `${myQth}, ${myState}` : myQth;
+      const myRig = document.getElementById('myRig')?.value || '';
+      const myAnt = document.getElementById('myAnt')?.value || '';
+      const myPwr = document.getElementById('myPwr')?.value || '';
+      const myGrid = (document.getElementById('myGrid')?.value || '').toUpperCase();
+      
+      const dxCall = (document.getElementById('dxCall')?.value || '').toUpperCase();
+      const dxGrid = (document.getElementById('dxGrid')?.value || '').toUpperCase();
+      const dxVia = (document.getElementById('dxQslVia')?.value || '').trim().toUpperCase();
+      
+      const date = document.getElementById('qsoDate')?.value || '';
+      const utc = document.getElementById('qsoUtc')?.value || '';
+      const mhz = document.getElementById('qsoMhz')?.value || '';
+      const mode = (document.getElementById('qsoMode')?.value || '').toUpperCase();
+      const rst = document.getElementById('qsoRst')?.value || '';
+      const qslAction = (document.getElementById('qslAction')?.value || 'PSE QSL').toUpperCase();
+      const remarks = document.getElementById('qsoRemarks')?.value || '';
+
+      const theme = document.getElementById('backTheme')?.value || 'light';
+      const opacity = parseInt(document.getElementById('backOpacity')?.value || 95, 10) / 100;
+      const accentColor = document.getElementById('backColor')?.value || '#113f67';
+      const isDark = theme === 'dark';
+
+      const baseText = isDark ? '#f8fafc' : '#0f172a';
+      const dimText = isDark ? '#94a3b8' : '#475569';
+      const overlayColor = isDark ? `rgba(15, 23, 42, ${opacity})` : `rgba(255, 255, 255, ${opacity})`;
+
+      // Draw Background
+      backCtx.fillStyle = '#f5eedc';
+      backCtx.fillRect(0, 0, W, H);
+      
+      const innerW = W - pad * 2; const innerH = H - pad * 2;
+      backCtx.save();
+      backCtx.beginPath(); backCtx.rect(pad, pad, innerW, innerH); backCtx.clip();
+
+      if (backBgImage) {
+        const scale = Math.max(innerW / backBgImage.width, innerH / backBgImage.height);
+        const ix = pad + (innerW - backBgImage.width * scale) / 2;
+        const iy = pad + (innerH - backBgImage.height * scale) / 2;
+        backCtx.drawImage(backBgImage, ix, iy, backBgImage.width * scale, backBgImage.height * scale);
+      }
+      backCtx.restore();
+
+      // Main Overlay
+      const oPad = 48;
+      const oX = oPad; const oY = oPad;
+      const oW = W - oPad * 2; const oH = H - oPad * 2;
+
+      backCtx.save();
+      backCtx.fillStyle = overlayColor;
+      backCtx.fillRect(oX, oY, oW, oH);
+      backCtx.strokeStyle = accentColor;
+      backCtx.lineWidth = 4;
+      backCtx.strokeRect(oX, oY, oW, oH);
+
+      // Header Texts (Top Left)
+      backCtx.textAlign = 'left'; backCtx.textBaseline = 'top';
+      backCtx.fillStyle = dimText; backCtx.font = '600 22px "Inter", sans-serif';
+      backCtx.fillText('AMATEUR RADIO STATION', oX + 40, oY + 45);
+      backCtx.fillStyle = accentColor; backCtx.font = '800 68px "JetBrains Mono", monospace';
+      backCtx.fillText(myCall, oX + 40, oY + 78);
+      backCtx.fillStyle = baseText; backCtx.font = '600 26px "Inter", sans-serif';
+      const locLine = [myName, fullQth, myGrid ? `Grid: ${myGrid}` : ''].filter(Boolean).join(' • ');
+      backCtx.fillText(locLine, oX + 40, oY + 165);
+
+      backCtx.fillStyle = dimText; backCtx.font = '500 21px "JetBrains Mono", monospace';
+      const metaLine = [
+        myCounty ? `County: ${myCounty}` : '',
+        myZones,
+        myQslMgr ? `QSL: ${myQslMgr}` : ''
+      ].filter(Boolean).join('  |  ');
+      if (metaLine) {
+        backCtx.fillText(metaLine, oX + 40, oY + 206);
+      }
+
+      // Routing Info (Top Right - Large Bureau-Friendly Display)
+      backCtx.textAlign = 'right';
+      const rightEdge = oX + oW - 40;
+      const dxLabel = dxGrid ? `CONFIRMING 2-WAY QSO WITH (${dxGrid})` : 'CONFIRMING 2-WAY QSO WITH';
+      if (dxVia) {
+        backCtx.fillStyle = dimText; backCtx.font = '600 20px "Inter", sans-serif';
+        backCtx.fillText(dxLabel, rightEdge, oY + 45);
+        backCtx.fillStyle = baseText; backCtx.font = '800 54px "JetBrains Mono", monospace';
+        backCtx.fillText(dxCall, rightEdge, oY + 75);
+        backCtx.fillStyle = accentColor; backCtx.font = '800 64px "JetBrains Mono", monospace';
+        backCtx.fillText(`VIA ${dxVia}`, rightEdge, oY + 145);
+      } else {
+        backCtx.fillStyle = dimText; backCtx.font = '600 22px "Inter", sans-serif';
+        backCtx.fillText(dxLabel, rightEdge, oY + 55);
+        backCtx.fillStyle = baseText; backCtx.font = '800 68px "JetBrains Mono", monospace';
+        backCtx.fillText(dxCall, rightEdge, oY + 92);
+      }
+
+      // QSO Table Grid (6 Columns including QSL Action)
+      const tY = oY + 270; const tH = 165;
+      backCtx.strokeStyle = baseText; backCtx.lineWidth = 2.5;
+      backCtx.strokeRect(oX + 40, tY, oW - 80, tH);
+      backCtx.beginPath(); backCtx.moveTo(oX + 40, tY + 58); backCtx.lineTo(oX + oW - 40, tY + 58); backCtx.stroke();
+
+      const cols = [
+        { label: 'DATE (UTC)', val: date, w: 264 },
+        { label: 'TIME', val: utc, w: 190 },
+        { label: 'FREQ (MHZ)', val: mhz, w: 250 },
+        { label: 'MODE', val: mode, w: 200 },
+        { label: 'RST', val: rst, w: 180 },
+        { label: 'QSL STATUS', val: qslAction, w: 240 }
+      ];
+
+      let cx = oX + 40;
+      backCtx.textAlign = 'center'; backCtx.textBaseline = 'middle';
+      cols.forEach((col, i) => {
+        if (i > 0) {
+          backCtx.beginPath(); backCtx.moveTo(cx, tY); backCtx.lineTo(cx, tY + tH); backCtx.stroke();
+        }
+        const center = cx + col.w / 2;
+        backCtx.fillStyle = dimText; backCtx.font = '700 21px "JetBrains Mono", monospace';
+        backCtx.fillText(col.label, center, tY + 29);
+        backCtx.fillStyle = i === 5 ? accentColor : baseText;
+        backCtx.font = '700 34px "JetBrains Mono", monospace';
+        backCtx.fillText(col.val, center, tY + 112);
+        cx += col.w;
+      });
+
+      // Bottom Section (Equipment & Remarks)
+      const bY = tY + tH + 95;
+      backCtx.textAlign = 'left'; backCtx.textBaseline = 'alphabetic';
+      
+      const drawInfoLine = (label, val, lx, ly) => {
+        backCtx.fillStyle = dimText; backCtx.font = '700 24px "JetBrains Mono", monospace';
+        backCtx.fillText(`${label}:`, lx, ly);
+        const lW = backCtx.measureText(`${label}:`).width;
+        backCtx.fillStyle = accentColor; backCtx.font = '700 28px "JetBrains Mono", monospace';
+        backCtx.fillText(val, lx + lW + 18, ly);
+      };
+
+      drawInfoLine('RIG', myRig, oX + 40, bY);
+      drawInfoLine('PWR', myPwr, oX + 560, bY);
+      drawInfoLine('ANT', myAnt, oX + 40, bY + 85);
+      drawInfoLine('REMARKS', remarks, oX + 40, bY + 170);
+
+      backCtx.fillStyle = dimText;
+      backCtx.font = '600 20px "JetBrains Mono", monospace';
+      backCtx.fillText(`TNX QSO • VY 73 DE ${myCall}`, oX + 40, oY + oH - 35);
+
+      const showStamp = document.getElementById('showStampToggle')?.checked;
+      const showQr = document.getElementById('showQrCodeToggle')?.checked;
+      
+      const qrSize = 165;
+      const qrX = oX + oW - qrSize - 45;
+      const qrY = oY + oH - qrSize - 45;
+
+      if (showQr) {
+        drawQsoQrCode(backCtx, qrX, qrY, qrSize, `QSO:${myCall}>${dxCall}|${date}|${utc}|${mhz}|${mode}|${rst}`);
+      }
+
+      if (showStamp) {
+        const stampCenterX = showQr ? (qrX - 155) : (oX + oW - 175);
+        const stampCenterY = oY + oH - 125;
+        backCtx.save();
+        backCtx.translate(stampCenterX, stampCenterY);
+        backCtx.rotate(-0.08);
+        backCtx.strokeStyle = 'rgba(220, 38, 38, 0.85)'; backCtx.lineWidth = 4;
+        backCtx.strokeRect(-125, -45, 250, 90);
+        backCtx.fillStyle = 'rgba(220, 38, 38, 0.85)'; backCtx.textAlign = 'center';
+        backCtx.font = '800 22px "JetBrains Mono", monospace';
+        backCtx.fillText('VERIFIED QSO', 0, -8);
+        backCtx.font = '700 18px "JetBrains Mono", monospace';
+        backCtx.fillText(`${myCall} ✓ ${dxCall}`, 0, 22);
+        backCtx.restore();
+      }
+      backCtx.restore();
+    }
+
+    function updateCard() {
+      renderFrontCard();
+      renderBackCard();
+    }
+
+    // Station Profile Management
+    function loadStationToInputs(idx) {
+      const st = stations[idx];
+      if (!st) return;
+      activeStationIndex = idx;
+      const map = {
+        myCall: st.call, myName: st.name, myRig: st.rig, myPwr: st.pwr,
+        myGrid: st.grid, myAnt: st.ant, myQth: st.qth, myState: st.state,
+        myCounty: st.county, myZones: st.zones, myQslMgr: st.qslMgr
+      };
+      Object.entries(map).forEach(([id, val]) => {
+        const el = document.getElementById(id);
+        if (el) el.value = val || '';
+      });
+      renderStationCards();
+      updateCard();
+    }
+
+    function syncInputsToActiveStation() {
+      const st = stations[activeStationIndex];
+      if (!st) return;
+      st.call = (document.getElementById('myCall')?.value || '').toUpperCase();
+      st.name = document.getElementById('myName')?.value || '';
+      st.rig = document.getElementById('myRig')?.value || '';
+      st.pwr = document.getElementById('myPwr')?.value || '';
+      st.grid = (document.getElementById('myGrid')?.value || '').toUpperCase();
+      st.ant = document.getElementById('myAnt')?.value || '';
+      st.qth = document.getElementById('myQth')?.value || '';
+      st.state = (document.getElementById('myState')?.value || '').toUpperCase();
+      st.county = document.getElementById('myCounty')?.value || '';
+      st.zones = document.getElementById('myZones')?.value || '';
+      st.qslMgr = (document.getElementById('myQslMgr')?.value || '').toUpperCase();
+      safeSetStorage('qslStationsList', JSON.stringify(stations));
+      renderStationCards();
+    }
+
+    function renderStationCards() {
+      const container = document.getElementById('stationCardsContainer');
+      if (!container) return;
+      container.innerHTML = '';
+      stations.forEach((st, idx) => {
+        const isActive = idx === activeStationIndex;
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = `text-left p-2.5 rounded-xl border transition ${
+          isActive
+            ? 'bg-amber-500/15 border-amber-500 text-white shadow'
+            : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-200'
+        }`;
+        btn.innerHTML = `
+          <div class="flex items-center justify-between">
+            <span class="font-qsl font-bold text-xs ${isActive ? 'text-amber-400' : 'text-slate-200'}">${st.call || 'STATION'}</span>
+            <span class="text-[10px] font-qsl px-1.5 py-0.5 rounded bg-slate-900 text-slate-300">${st.pwr || ''}</span>
+          </div>
+          <p class="text-[10px] truncate mt-1 text-slate-400">${st.rig || ''} • ${st.qth || ''}</p>
+        `;
+        btn.addEventListener('click', () => loadStationToInputs(idx));
+        container.appendChild(btn);
+      });
+    }
+
+    document.getElementById('addStationBtn')?.addEventListener('click', () => {
+      stations.push({
+        call: 'W1AW',
+        name: document.getElementById('myName')?.value || 'Operator',
+        rig: 'IC-7300',
+        pwr: '100 W',
+        grid: 'FN31',
+        ant: 'Dipole',
+        qth: 'Newington',
+        state: 'CT',
+        county: 'Hartford',
+        zones: 'CQ 05 / ITU 08',
+        qslMgr: 'DIRECT / LOTW'
+      });
+      safeSetStorage('qslStationsList', JSON.stringify(stations));
+      loadStationToInputs(stations.length - 1);
+      showToast('New station profile added!');
+    });
+
+    document.getElementById('deleteStationBtn')?.addEventListener('click', () => {
+      if (stations.length <= 1) {
+        showToast('At least one station profile is required.', true);
+        return;
+      }
+      stations.splice(activeStationIndex, 1);
+      activeStationIndex = Math.max(0, activeStationIndex - 1);
+      safeSetStorage('qslStationsList', JSON.stringify(stations));
+      loadStationToInputs(activeStationIndex);
+      showToast('Station profile deleted.');
+    });
+
+    // Preset QSO Loaders
+    document.getElementById('loadEa5Btn')?.addEventListener('click', () => {
+      document.getElementById('dxCall').value = 'EA5HPF';
+      document.getElementById('qsoDate').value = '2026-10-10';
+      document.getElementById('qsoUtc').value = '14:54';
+      document.getElementById('qsoMhz').value = '28.074';
+      document.getElementById('qsoMode').value = 'FT8';
+      document.getElementById('qsoRst').value = '59';
+      document.getElementById('dxGrid').value = 'IM99';
+      document.getElementById('dxQslVia').value = 'KD4HOA';
+      updateCard();
+      showToast('Loaded EA5HPF QSO preset');
+    });
+
+    document.getElementById('loadHh2Btn')?.addEventListener('click', () => {
+      document.getElementById('dxCall').value = 'HH2JR';
+      document.getElementById('qsoDate').value = '2026-10-10';
+      document.getElementById('qsoUtc').value = '14:36';
+      document.getElementById('qsoMhz').value = '28.074';
+      document.getElementById('qsoMode').value = 'FT8';
+      document.getElementById('qsoRst').value = '59';
+      document.getElementById('dxGrid').value = 'FK38';
+      document.getElementById('dxQslVia').value = '';
+      updateCard();
+      showToast('Loaded HH2JR QSO preset');
+    });
+
+    // Input Listeners
+    const stationInputIds = new Set(['myCall', 'myName', 'myRig', 'myPwr', 'myGrid', 'myAnt', 'myQth', 'myState', 'myCounty', 'myZones', 'myQslMgr']);
+    document.querySelectorAll('input, select').forEach(el => {
+      el.addEventListener('input', () => {
+        if (el.id === 'frontColor') document.getElementById('frontColorVal').textContent = el.value;
+        if (el.id === 'backColor') document.getElementById('backColorVal').textContent = el.value;
+        if (stationInputIds.has(el.id)) syncInputsToActiveStation();
+        updateCard();
+      });
+    });
+
+    // Toast Notification Helper
+    function showToast(msg, isError = false) {
+      const container = document.getElementById('toastContainer');
+      if (!container) return;
+      const toast = document.createElement('div');
+      toast.className = `px-4 py-2 rounded-lg shadow-lg text-xs font-bold text-white ${isError ? 'bg-rose-600' : 'bg-emerald-600'} transition-opacity duration-300`;
+      toast.textContent = msg;
+      container.appendChild(toast);
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        setTimeout(() => toast.remove(), 300);
+      }, 2800);
+    }
+
+    // Process, Downscale (to prevent quota errors), and Save Image
+    function processAndSaveImage(file, isFront) {
+      const reader = new FileReader();
+      reader.onload = ev => {
+        const img = new Image();
+        img.onload = () => {
+          if (isFront) frontBgImage = img;
+          else backBgImage = img;
+          updateCard();
+          
+          const maxDim = 1500;
+          let w = img.width, h = img.height;
+          if (w > maxDim || h > maxDim) {
+            const ratio = Math.min(maxDim / w, maxDim / h);
+            w *= ratio; h *= ratio;
+          }
+          const oc = document.createElement('canvas');
+          oc.width = w; oc.height = h;
+          const octx = oc.getContext('2d');
+          octx.drawImage(img, 0, 0, w, h);
+          
+          if (safeSetStorage(isFront ? 'qslFrontBg' : 'qslBackBg', oc.toDataURL('image/jpeg', 0.85))) {
+            showToast(isFront ? 'Front background saved!' : 'Back background saved!');
+          } else {
+            showToast('Background applied for this session.', false);
+          }
+        };
+        img.src = ev.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    // File Uploads & Resets
+    document.getElementById('frontBgUpload')?.addEventListener('change', e => {
+      const file = e.target.files[0];
+      if (file) processAndSaveImage(file, true);
+    });
+
+    document.getElementById('backBgUpload')?.addEventListener('change', e => {
+      const file = e.target.files[0];
+      if (file) processAndSaveImage(file, false);
+    });
+
+    document.getElementById('resetFrontBgBtn')?.addEventListener('click', () => {
+      frontBgImage = null;
+      const inp = document.getElementById('frontBgUpload');
+      if (inp) inp.value = '';
+      safeRemoveStorage('qslFrontBg');
+      updateCard();
+      showToast('Front background reset to default artwork.');
+    });
+
+    document.getElementById('resetBackBgBtn')?.addEventListener('click', () => {
+      backBgImage = null;
+      const inp = document.getElementById('backBgUpload');
+      if (inp) inp.value = '';
+      safeRemoveStorage('qslBackBg');
+      updateCard();
+      showToast('Back background cleared.');
+    });
+
+    // JPG Downloads
+    function downloadCanvasJpg(targetCanvas, suffix) {
+      if (!targetCanvas) return;
+      const dx = (document.getElementById('dxCall')?.value || 'DX').toUpperCase();
+      const my = (document.getElementById('myCall')?.value || 'MYCALL').toUpperCase();
+      const link = document.createElement('a');
+      link.download = `${dx}-de-${my}_${suffix}.jpg`;
+      link.href = targetCanvas.toDataURL('image/jpeg', 0.95);
+      link.click();
+      showToast(`Downloaded ${link.download}`);
+    }
+
+    document.getElementById('downloadFrontJpgBtn')?.addEventListener('click', () => downloadCanvasJpg(canvas, 'Front'));
+    document.getElementById('downloadBackJpgBtn')?.addEventListener('click', () => downloadCanvasJpg(backCanvas, 'Back'));
+
+    // Vault & Print Queue Management
+    function createCardSnapshot() {
+      updateCard();
+      return {
+        id: Date.now() + Math.random().toString(36).slice(2, 6),
+        myCall: (document.getElementById('myCall')?.value || 'CALL').toUpperCase(),
+        dxCall: (document.getElementById('dxCall')?.value || 'DX').toUpperCase(),
+        dxVia: (document.getElementById('dxQslVia')?.value || '').toUpperCase(),
+        date: document.getElementById('qsoDate')?.value || '',
+        utc: document.getElementById('qsoUtc')?.value || '',
+        mhz: document.getElementById('qsoMhz')?.value || '',
+        mode: (document.getElementById('qsoMode')?.value || '').toUpperCase(),
+        frontDataUrl: canvas.toDataURL('image/jpeg', 0.9),
+        backDataUrl: backCanvas.toDataURL('image/jpeg', 0.9)
+      };
+    }
+
+    function renderVault() {
+      const grid = document.getElementById('vaultGrid');
+      const badge = document.getElementById('vaultCountBadge');
+      if (badge) badge.textContent = String(cardVault.length);
+      if (!grid) return;
+
+      if (cardVault.length === 0) {
+        grid.innerHTML = `<div class="col-span-2 text-center py-8 text-xs text-slate-500 border border-dashed border-slate-800 rounded-xl">No saved cards in vault yet. Click "+ Save to Vault" in the Studio.</div>`;
+        return;
+      }
+
+      grid.innerHTML = '';
+      cardVault.forEach((card, idx) => {
+        const el = document.createElement('div');
+        el.className = 'bg-slate-950 border border-slate-800 rounded-xl p-2.5 space-y-2';
+        el.innerHTML = `
+          <img src="${card.frontDataUrl}" alt="${card.dxCall}" class="w-full h-24 object-cover rounded border border-slate-800">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="font-qsl font-bold text-xs text-white">${card.dxCall} <span class="text-amber-400 text-[10px]">${card.dxVia ? 'VIA ' + card.dxVia : ''}</span></p>
+              <p class="text-[10px] text-slate-400 font-qsl">${card.date} • ${card.mhz} ${card.mode}</p>
+            </div>
+            <button type="button" data-del="${idx}" class="text-slate-500 hover:text-rose-400 text-xs font-bold px-1.5">✕</button>
+          </div>
+          <div class="grid grid-cols-3 gap-1 pt-1">
+            <button type="button" data-slot="0" class="py-1 rounded bg-slate-900 hover:bg-blue-500/20 text-[10px] font-bold text-blue-400 border border-slate-800">+ Slot 1</button>
+            <button type="button" data-slot="1" class="py-1 rounded bg-slate-900 hover:bg-blue-500/20 text-[10px] font-bold text-blue-400 border border-slate-800">+ Slot 2</button>
+            <button type="button" data-slot="2" class="py-1 rounded bg-slate-900 hover:bg-blue-500/20 text-[10px] font-bold text-blue-400 border border-slate-800">+ Slot 3</button>
+          </div>
+        `;
+        el.querySelector('[data-del]')?.addEventListener('click', () => {
+          cardVault.splice(idx, 1);
+          renderVault();
+        });
+        el.querySelectorAll('[data-slot]').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const sIdx = parseInt(btn.getAttribute('data-slot'), 10);
+            printQueue[sIdx] = card;
+            renderPrintQueue();
+            showToast(`Added ${card.dxCall} to Slot ${sIdx + 1}`);
+          });
+        });
+        grid.appendChild(el);
+      });
+    }
+
+    function renderPrintQueue() {
+      const filledCount = printQueue.filter(Boolean).length;
+      const badge = document.getElementById('printQueueBadge');
+      if (badge) badge.textContent = `${filledCount}/3`;
+
+      const slotsGrid = document.getElementById('queueSlotsGrid');
+      if (slotsGrid) {
+        slotsGrid.innerHTML = '';
+        printQueue.forEach((item, idx) => {
+          const cardEl = document.createElement('div');
+          cardEl.className = 'bg-slate-950 border border-slate-800 rounded-xl p-3 space-y-2';
+          if (!item) {
+            cardEl.innerHTML = `
+              <div class="h-24 rounded border border-dashed border-slate-800 flex items-center justify-center text-xs font-bold text-slate-600">SLOT ${idx + 1} EMPTY</div>
+              <p class="text-[10px] text-slate-500 text-center">Assign from Studio or Vault</p>
+            `;
+          } else {
+            const imgSrc = sheetPreviewSide === 'fronts' ? item.frontDataUrl : item.backDataUrl;
+            cardEl.innerHTML = `
+              <div class="relative">
+                <img src="${imgSrc}" alt="Slot ${idx + 1}" class="w-full h-24 object-cover rounded border border-slate-700">
+                <button type="button" data-remove="${idx}" class="absolute top-1 right-1 bg-slate-900/90 hover:bg-rose-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded">✕</button>
+              </div>
+              <div class="flex items-center justify-between text-[11px] font-qsl">
+                <span class="font-bold text-white">S${idx + 1}: ${item.dxCall}</span>
+                <span class="text-amber-400 text-[10px]">${item.dxVia ? 'VIA ' + item.dxVia : item.mode}</span>
+              </div>
+            `;
+            cardEl.querySelector('[data-remove]')?.addEventListener('click', () => {
+              printQueue[idx] = null;
+              renderPrintQueue();
+            });
+          }
+          slotsGrid.appendChild(cardEl);
+        });
+      }
+
+      // Update mini sheet preview
+      const sheetEl = document.getElementById('frontsPreview');
+      const fitContain = document.getElementById('printFitToggle')?.checked;
+      if (sheetEl) sheetEl.classList.toggle('fit-contain', !!fitContain);
+
+      const edgeLabel = document.getElementById('sheetEdgeLabel');
+      if (edgeLabel) edgeLabel.textContent = `▲ TOP (${sheetPreviewSide.toUpperCase()})`;
+
+      [0, 1, 2].forEach(i => {
+        const slotDom = document.getElementById(`previewSlot${i}`);
+        if (!slotDom) return;
+        const item = printQueue[i];
+        if (!item) {
+          slotDom.innerHTML = `<div class="empty">SLOT ${i + 1}</div>`;
+        } else {
+          const src = sheetPreviewSide === 'fronts' ? item.frontDataUrl : item.backDataUrl;
+          slotDom.innerHTML = `<img src="${src}" alt="Slot ${i + 1}">`;
+        }
+      });
+    }
+
+    document.getElementById('saveToVaultBtn')?.addEventListener('click', () => {
+      const snap = createCardSnapshot();
+      cardVault.unshift(snap);
+      renderVault();
+      showToast(`Saved ${snap.dxCall} QSL card to Vault!`);
+    });
+
+    document.getElementById('sendToPrintQueueBtn')?.addEventListener('click', () => {
+      const snap = createCardSnapshot();
+      cardVault.unshift(snap);
+      let targetSlot = printQueue.findIndex(s => s === null);
+      if (targetSlot === -1) targetSlot = 0;
+      printQueue[targetSlot] = snap;
+      renderVault();
+      renderPrintQueue();
+      switchTab('print');
+      showToast(`Added ${snap.dxCall} to Print Slot ${targetSlot + 1}`);
+    });
+
+    document.getElementById('clearVaultBtn')?.addEventListener('click', () => {
+      cardVault = [];
+      renderVault();
+      showToast('Cleared Saved Cards Vault.');
+    });
+
+    document.getElementById('clearQueueBtn')?.addEventListener('click', () => {
+      printQueue = [null, null, null];
+      renderPrintQueue();
+      showToast('Cleared 3-Up Print Queue.');
+    });
+
+    document.getElementById('printFitToggle')?.addEventListener('change', renderPrintQueue);
+
+    document.getElementById('sheetPreviewFrontsBtn')?.addEventListener('click', () => {
+      sheetPreviewSide = 'fronts';
+      document.getElementById('sheetPreviewFrontsBtn').className = 'px-2.5 py-1 rounded text-xs font-bold bg-emerald-500 text-slate-950 transition';
+      document.getElementById('sheetPreviewBacksBtn').className = 'px-2.5 py-1 rounded text-xs font-semibold text-slate-400 hover:text-white transition';
+      renderPrintQueue();
+    });
+
+    document.getElementById('sheetPreviewBacksBtn')?.addEventListener('click', () => {
+      sheetPreviewSide = 'backs';
+      document.getElementById('sheetPreviewBacksBtn').className = 'px-2.5 py-1 rounded text-xs font-bold bg-blue-500 text-slate-950 transition';
+      document.getElementById('sheetPreviewFrontsBtn').className = 'px-2.5 py-1 rounded text-xs font-semibold text-slate-400 hover:text-white transition';
+      renderPrintQueue();
+    });
+
+    // Generate 300 DPI 8.5" x 11" 3-Up Sheet & Trigger Print / Download
+    async function export3UpSheet(side) {
+      if (printQueue.every(s => s === null)) {
+        showToast('Print queue is empty! Add at least one card first.', true);
+        return;
+      }
+      const sheetCanvas = document.createElement('canvas');
+      // 8.5" x 11" at 300 DPI = 2550 x 3300 px
+      sheetCanvas.width = 2550;
+      sheetCanvas.height = 3300;
+      const sCtx = sheetCanvas.getContext('2d');
+      sCtx.fillStyle = '#ffffff';
+      sCtx.fillRect(0, 0, 2550, 3300);
+
+      // Each 5.5" x 3.5" card at 300 DPI = 1650 x 1050 px
+      const cardW = 1650;
+      const cardH = 1050;
+      const startX = Math.round((2550 - cardW) / 2); // 450 px
+      const startY = 75; // 0.25" top margin
+      const fitContain = document.getElementById('printFitToggle')?.checked;
+
+      for (let i = 0; i < 3; i++) {
+        const item = printQueue[i];
+        const slotY = startY + i * cardH;
+        if (item) {
+          const src = side === 'fronts' ? item.frontDataUrl : item.backDataUrl;
+          await new Promise(resolve => {
+            const img = new Image();
+            img.onload = () => {
+              sCtx.save();
+              sCtx.beginPath();
+              sCtx.rect(startX, slotY, cardW, cardH);
+              sCtx.clip();
+              const scale = fitContain
+                ? Math.min(cardW / img.width, cardH / img.height)
+                : Math.max(cardW / img.width, cardH / img.height);
+              const dx = startX + (cardW - img.width * scale) / 2;
+              const dy = slotY + (cardH - img.height * scale) / 2;
+              sCtx.drawImage(img, dx, dy, img.width * scale, img.height * scale);
+              sCtx.restore();
+              resolve();
+            };
+            img.onerror = resolve;
+            img.src = src;
+          });
+        }
+        // Subtle crop ticks outside card corners
+        sCtx.strokeStyle = '#94a3b8';
+        sCtx.lineWidth = 2;
+        const tick = 35;
+        // Left & right horizontal crop ticks
+        [slotY, slotY + cardH].forEach(y => {
+          sCtx.beginPath();
+          sCtx.moveTo(startX - tick - 10, y); sCtx.lineTo(startX - 10, y);
+          sCtx.moveTo(startX + cardW + 10, y); sCtx.lineTo(startX + cardW + tick + 10, y);
+          sCtx.stroke();
+        });
+      }
+
+      const dataUrl = sheetCanvas.toDataURL('image/jpeg', 0.95);
+      const link = document.createElement('a');
+      link.download = `QSL_3Up_Sheet_${side.toUpperCase()}.jpg`;
+      link.href = dataUrl;
+      link.click();
+      showToast(`Downloaded 300 DPI 3-Up ${side.toUpperCase()} sheet!`);
+    }
+
+    document.getElementById('downloadFrontsPdfBtn')?.addEventListener('click', () => export3UpSheet('fronts'));
+    document.getElementById('downloadBacksPdfBtn')?.addEventListener('click', () => export3UpSheet('backs'));
+
+    // View Toggles
+    const switchTab = (tab) => {
+      const isPrint = tab === 'print';
+      document.getElementById('studioView')?.classList.toggle('hidden', isPrint);
+      document.getElementById('printView')?.classList.toggle('hidden', !isPrint);
+      document.getElementById('printQueueContainer')?.classList.toggle('hidden', !isPrint);
+
+      const studioBtn = document.getElementById('tabStudioBtn');
+      const printBtn = document.getElementById('tabPrintBtn');
+      if (studioBtn && printBtn) {
+        studioBtn.className = isPrint
+          ? 'px-3.5 py-1.5 rounded-lg text-xs font-semibold text-slate-300 hover:text-white transition'
+          : 'px-3.5 py-1.5 rounded-lg text-xs font-bold bg-amber-500 text-slate-950 shadow transition';
+        printBtn.className = isPrint
+          ? 'px-3.5 py-1.5 rounded-lg text-xs font-bold bg-amber-500 text-slate-950 shadow transition flex items-center gap-1.5'
+          : 'px-3.5 py-1.5 rounded-lg text-xs font-semibold text-slate-300 hover:text-white transition flex items-center gap-1.5';
+      }
+    };
+    document.getElementById('tabStudioBtn')?.addEventListener('click', () => switchTab('studio'));
+    document.getElementById('tabPrintBtn')?.addEventListener('click', () => switchTab('print'));
+
+    // QRZ Chrome Extension Modal & File Downloads
+    const extModal = document.getElementById('chromeExtModal');
+    document.getElementById('getChromeExtBtn')?.addEventListener('click', () => extModal?.classList.remove('hidden'));
+    document.getElementById('closeExtModalBtn')?.addEventListener('click', () => extModal?.classList.add('hidden'));
+
+    function downloadTextFile(filename, text) {
+      const blob = new Blob([text], { type: 'application/octet-stream' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = filename; a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+
+    document.getElementById('dlManifestBtn')?.addEventListener('click', () => {
+      const manifest = {
+        manifest_version: 3,
+        name: "Digital QSL Studio QRZ Preloader",
+        version: "1.0",
+        description: "Send QRZ callsign & QSL manager info directly to Digital QSL Studio.",
+        content_scripts: [{
+          matches: ["*://*.qrz.com/db/*"],
+          js: ["content.js"]
+        }]
+      };
+      downloadTextFile('manifest.json', JSON.stringify(manifest, null, 2));
+      showToast('Downloaded manifest.json');
+    });
+
+    document.getElementById('dlContentJsBtn')?.addEventListener('click', () => {
+      const studioUrl = window.location.href.split('?')[0];
+      const contentScript = `(() => {
+  const callMatch = location.pathname.match(/\\/db\\/([A-Z0-9\\/]+)/i);
+  if (!callMatch) return;
+  const dxCall = callMatch[1].toUpperCase();
+  const btn = document.createElement('a');
+  btn.textContent = 'Send QSL Card ↗';
+  btn.style.cssText = 'position:fixed;bottom:20px;right:20px;z-index:99999;background:#f59e0b;color:#0f172a;padding:10px 16px;border-radius:10px;font-weight:bold;font-family:sans-serif;text-decoration:none;box-shadow:0 10px 20px rgba(0,0,0,0.3);';
+  btn.href = '${studioUrl}?dx=' + encodeURIComponent(dxCall);
+  btn.target = '_blank';
+  document.body.appendChild(btn);
+})();`;
+      downloadTextFile('content.js', contentScript);
+      showToast('Downloaded content.js');
+    });
+
+    // Initialization
+    window.addEventListener('DOMContentLoaded', () => {
+      // Load saved stations
+      const savedStations = safeGetStorage('qslStationsList');
+      if (savedStations) {
+        try {
+          const parsed = JSON.parse(savedStations);
+          if (Array.isArray(parsed) && parsed.length > 0) stations = parsed;
+        } catch (e) {}
+      }
+      loadStationToInputs(0);
+
+      // Check URL Parameters for QRZ Preload
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('dx')) {
+        document.getElementById('dxCall').value = params.get('dx').toUpperCase();
+      }
+      if (params.get('via')) {
+        document.getElementById('dxQslVia').value = params.get('via').toUpperCase();
+      }
+
+      // Load saved backgrounds from local storage
+      const savedFront = safeGetStorage('qslFrontBg');
+      if (savedFront) {
+        const img = new Image();
+        img.onload = () => { frontBgImage = img; updateCard(); };
+        img.src = savedFront;
+      }
+      
+      const savedBack = safeGetStorage('qslBackBg');
+      if (savedBack) {
+        const img = new Image();
+        img.onload = () => { backBgImage = img; updateCard(); };
+        img.src = savedBack;
+      }
+
+      renderVault();
+      renderPrintQueue();
+      document.fonts.ready.then(updateCard);
+    });
+
+  </script>
+</body>
+</html>
